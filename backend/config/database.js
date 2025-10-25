@@ -92,6 +92,131 @@ const initializeSchema = async () => {
 
 
 
+    // Quotes table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS quotes (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        quote TEXT NOT NULL,
+        author VARCHAR(255),
+        category_id INT NOT NULL,
+        user_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        is_deleted TINYINT(1) DEFAULT 0,
+        FOREIGN KEY (category_id) REFERENCES categories(id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_category (category_id),
+        INDEX idx_user (user_id),
+        INDEX idx_deleted_created (is_deleted, created_at DESC)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Articles table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS articles (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        title TEXT NOT NULL,
+        url TEXT,
+        category_id INT NOT NULL,
+        user_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        is_deleted TINYINT(1) DEFAULT 0,
+        FOREIGN KEY (category_id) REFERENCES categories(id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_category (category_id),
+        INDEX idx_user (user_id),
+        INDEX idx_deleted_created (is_deleted, created_at DESC)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Books table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS books (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        title TEXT NOT NULL,
+        summary TEXT,
+        author VARCHAR(255),
+        url TEXT,
+        category_id INT NOT NULL,
+        user_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        is_deleted TINYINT(1) DEFAULT 0,
+        FOREIGN KEY (category_id) REFERENCES categories(id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_category (category_id),
+        INDEX idx_user (user_id),
+        INDEX idx_deleted_created (is_deleted, created_at DESC)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Videos table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS videos (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        title TEXT NOT NULL,
+        url TEXT,
+        category_id INT NOT NULL,
+        user_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        is_deleted TINYINT(1) DEFAULT 0,
+        FOREIGN KEY (category_id) REFERENCES categories(id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_category (category_id),
+        INDEX idx_user (user_id),
+        INDEX idx_deleted_created (is_deleted, created_at DESC)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // AI Prompts table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS aiprompts (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        prompt TEXT NOT NULL,
+        category_id INT NOT NULL,
+        user_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        is_deleted TINYINT(1) DEFAULT 0,
+        FOREIGN KEY (category_id) REFERENCES categories(id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_category (category_id),
+        INDEX idx_user (user_id),
+        INDEX idx_deleted_created (is_deleted, created_at DESC)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Tags table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS tags (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_deleted TINYINT(1) DEFAULT 0,
+        INDEX idx_name (name),
+        INDEX idx_deleted (is_deleted)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Tag junction tables
+    const tagTables = [
+      'quote_tags (quote_id INT, tag_id INT, PRIMARY KEY (quote_id, tag_id), FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE, FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE)',
+      'article_tags (article_id INT, tag_id INT, PRIMARY KEY (article_id, tag_id), FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE, FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE)',
+      'book_tags (book_id INT, tag_id INT, PRIMARY KEY (book_id, tag_id), FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE, FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE)',
+      'video_tags (video_id INT, tag_id INT, PRIMARY KEY (video_id, tag_id), FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE, FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE)',
+      'aiprompt_tags (aiprompt_id INT, tag_id INT, PRIMARY KEY (aiprompt_id, tag_id), FOREIGN KEY (aiprompt_id) REFERENCES aiprompts(id) ON DELETE CASCADE, FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE)'
+    ];
+
+    for (const table of tagTables) {
+      await connection.execute(`CREATE TABLE IF NOT EXISTS ${table} ENGINE=InnoDB`);
+    }
+
+
+
+
+
     connection.release();
     logger.info('MySQL schema initialized successfully');
   } catch (error) {

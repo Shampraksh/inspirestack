@@ -21,6 +21,8 @@ import { ScrollArea } from "./components/ui/scroll-area";
 import bcrypt from "bcryptjs";
 import { GoogleOAuthProvider, useGoogleLogin, CredentialResponse, GoogleLogin } from "@react-oauth/google";
 import axios from "axios";
+import { log } from "node:console";
+import { it } from "node:test";
 // import { OTPInput } from 'input-otp@1.4.2';
 
 
@@ -125,7 +127,7 @@ class ApiService {
     console.log("Fetching content for category:", category, "page:", page, "type:", type , "limit:", ITEMS_PER_PAGE);
     
 
-    return this.get('/content', { 
+    return this.get('/content-type', { 
       category: category === 'all' ? undefined : category,
       type: type === 'all' ? undefined : type,
       page,
@@ -171,6 +173,16 @@ static async googleAuth(response: CredentialResponse) {
   static async logout() {
     return this.post('/auth/logout');
   }
+
+    // Theme API
+
+
+    static async updateTheme(theme: string, userId: string): Promise<UpdateThemeResponse> {
+        console.log("Updating theme to:", theme, "for userId:", userId);
+
+        const response = await this.put('/auth/theme', { theme, userId });
+        return response;
+    }
 
 
 }
@@ -267,17 +279,7 @@ const updateTheme = async (newTheme: string) => {
   );
 }
 
-// const CATEGORIES = [
-//   { id: "all", name: "All", icon: "🌟", color: "bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200" },
-//   { id: "mindset", name: "Mindset", icon: "🧠", color: "bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-slate-200" },
-//   { id: "productivity", name: "Productivity", icon: "⚡", color: "bg-slate-300 hover:bg-slate-400 text-slate-900 dark:bg-slate-500 dark:hover:bg-slate-400 dark:text-slate-100" },
-//   { id: "leadership", name: "Leadership", icon: "👑", color: "bg-slate-400 hover:bg-slate-500 text-white dark:bg-slate-400 dark:hover:bg-slate-300 dark:text-slate-900" },
-//   { id: "learning", name: "Learning", icon: "📚", color: "bg-slate-500 hover:bg-slate-600 text-white dark:bg-slate-300 dark:hover:bg-slate-200 dark:text-slate-900" },
-//   { id: "wellbeing", name: "Wellbeing", icon: "🌿", color: "bg-slate-600 hover:bg-slate-700 text-white dark:bg-slate-200 dark:hover:bg-slate-100 dark:text-slate-900" },
-//   { id: "spirituality", name: "Spirituality", icon: "🙏", color: "bg-slate-700 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-50 dark:text-slate-900" },
-//   { id: "relationship", name: "Relationship", icon: "💝", color: "bg-slate-800 hover:bg-slate-900 text-white dark:bg-slate-50 dark:hover:bg-white dark:text-slate-900" },
-//   { id: "career", name: "Career", icon: "🚀", color: "bg-slate-900 hover:bg-black text-white dark:bg-white dark:hover:bg-gray-50 dark:text-slate-900" },
-// ];
+
 
 
 
@@ -477,7 +479,7 @@ function postLenght(postCounts: any) {
   return total;
 }
 
-const initialItems1: any[] = await (async () => {
+const initialItems: any[] = await (async () => {
   try {
     const posts = await ApiService.getAllPosts();
     console.log("Fetched posts:", posts.posts);
@@ -548,255 +550,6 @@ const initialItems1: any[] = await (async () => {
 
 
 
-// const initialItems: any[] | (() => any[]) = fetchPosts() || [];
-const initialItems: any[] | (() => any[]) = [
-    {
-        "id": 35,
-        "url": "",
-        "tags": null,
-        "type": "quote",
-        "user": "@Sham Senthilkumar",
-        "title": "The universe has no fixed agenda. Once you make any decision, it works around that decision. There is no right or wrong, only a series of possibilities that shift with each thought, feeling, and action that you experience.",
-        "author": "Deepak Chopra",
-        "points": 0,
-        "content": "The universe has no fixed agenda. Once you make any decision, it works around that decision. There is no right or wrong, only a series of possibilities that shift with each thought, feeling, and action that you experience.",
-        "category": "Spirituality",
-        "comments": null,
-        "createdAt": 1758875720000,
-        "userId": 0
-    },
-    {
-        "id": 34,
-        "url": "",
-        "tags": null,
-        "type": "quote",
-        "user": "@Sham Senthilkumar",
-        "title": "Love doesn’t need reason. It speaks from the irrational wisdom of the hear",
-        "author": "Deepak Chopra",
-        "points": 2,
-        "content": "Love doesn’t need reason. It speaks from the irrational wisdom of the hear",
-        "category": "Spirituality",
-        "comments": [
-            {
-                "id": 17,
-                "text": "I will try this.",
-                "user": "@ava_allen",
-                "createdAt": 1758615617000,
-                "createdBy": "@ava_allen"
-            },
-            {
-                "id": 18,
-                "text": "Nice article!",
-                "user": "@john_doe",
-                "createdAt": 1758615617000,
-                "createdBy": "@john_doe"
-            }
-        ],
-        "createdAt": 1758869649000,
-        "userId": 0
-    },
-    {
-        "id": 33,
-        "url": "",
-        "tags": [
-            "happy",
-            "sad"
-        ],
-        "type": "quote",
-        "user": "@Sham",
-        "title": "Happy life in hard situation",
-        "author": "sham",
-        "points": 0,
-        "content": "Happy life in hard situation",
-        "category": "Relationship",
-        "comments": [
-            {
-                "id": 15,
-                "text": "Interesting read.",
-                "user": "@sophia_lewis",
-                "createdAt": 1758615617000,
-                "createdBy": "@sophia_lewis"
-            },
-            {
-                "id": 16,
-                "text": "Useful information.",
-                "user": "@benjamin_hall",
-                "createdAt": 1758615617000,
-                "createdBy": "@benjamin_hall"
-            },
-            {
-                "id": 35,
-                "text": "nice post",
-                "user": "@Sham",
-                "createdAt": 1758875251000,
-                "createdBy": "@Sham"
-            },
-            {
-                "id": 37,
-                "text": "open source",
-                "user": "@Sham",
-                "createdAt": 1758875549000,
-                "createdBy": "@Sham"
-            }
-        ],
-        "createdAt": 1758854426000,
-        "userId": 0
-    },
-    {
-        "id": 43,
-        "url": "",
-        "tags": [
-            "happiness",
-            "surprise"
-        ],
-        "type": "aiprompt",
-        "user": "@Sham",
-        "title": "Life is full of surprise and miracles",
-        "author": "",
-        "points": 0,
-        "content": "Life is full of surprise and miracles",
-        "category": "Wellbeing",
-        "comments": [
-            {
-                "id": 36,
-                "text": "nice quote",
-                "user": "@Sham",
-                "createdAt": 1758875370000,
-                "createdBy": "@Sham"
-            }
-        ],
-        "createdAt": 1758854028000,
-        "userId": 0
-    },
-    {
-        "id": 52,
-        "url": "http://www.lightuptheweb.in",
-        "tags": [
-            "product",
-            "extension"
-        ],
-        "type": "article",
-        "user": "@Sham",
-        "title": "To be a good knoweledge from worl",
-        "author": "",
-        "points": 0,
-        "content": "",
-        "category": "Learning",
-        "comments": [
-            {
-                "id": 21,
-                "text": "Excellent insights.",
-                "user": "@emily_jones",
-                "createdAt": 1758615617000,
-                "createdBy": "@emily_jones"
-            },
-            {
-                "id": 22,
-                "text": "Very helpful.",
-                "user": "@william_white",
-                "createdAt": 1758615617000,
-                "createdBy": "@william_white"
-            }
-        ],
-        "createdAt": 1758852536000,
-        "userId": 0
-    },
-    {
-        "id": 42,
-        "url": "",
-        "tags": [
-            "happy",
-            "new",
-            "type"
-        ],
-        "type": "aiprompt",
-        "user": "@Sham",
-        "title": "What is application software in culture?",
-        "author": "",
-        "points": 0,
-        "content": "What is application software in culture?",
-        "category": "Relationship",
-        "comments": null,
-        "createdAt": 1758852188000,
-        "userId": 0
-    },
-    {
-        "id": 41,
-        "url": "https://www.youtube.com/watch?v=-hZIVX0iv9w",
-        "tags": null,
-        "type": "video",
-        "user": "@Sham",
-        "title": "What comes in goes out?",
-        "author": "",
-        "points": 0,
-        "content": "",
-        "category": "Career",
-        "comments": null,
-        "createdAt": 1758824302000,
-        "userId": 0
-    },
-    {
-        "id": 51,
-        "url": "https://stackoverflow.com/questions",
-        "tags": null,
-        "type": "article",
-        "user": "@Sham",
-        "title": "Happy for learning habit",
-        "author": "",
-        "points": 2,
-        "content": "",
-        "category": "Wellbeing",
-        "comments": [
-            {
-                "id": 19,
-                "text": "This book is a must-read.",
-                "user": "@jane_smith",
-                "createdAt": 1758615617000,
-                "createdBy": "@jane_smith"
-            },
-            {
-                "id": 20,
-                "text": "Highly recommend it.",
-                "user": "@michael_brown",
-                "createdAt": 1758615617000,
-                "createdBy": "@michael_brown"
-            }
-        ],
-        "createdAt": 1758824199000,
-        "userId": 0
-    },
-    {
-        "id": 41,
-        "url": "",
-        "tags": null,
-        "type": "aiprompt",
-        "user": "@Sham",
-        "title": "What is love language in computer?",
-        "author": "",
-        "points": 0,
-        "content": "What is love language in computer?",
-        "category": "Leadership",
-        "comments": null,
-        "createdAt": 1758823835000,
-        "userId": 0
-    },
-    {
-        "id": 41,
-        "url": "",
-        "tags": null,
-        "type": "book",
-        "user": "@Sham",
-        "title": "Rajesh shetty has inspire",
-        "author": "sham",
-        "points": 0,
-        "content": "Rajesh shetty has inspire by sham thankyou for arts",
-        "category": "Learning",
-        "comments": null,
-        "createdAt": 1758822455000,
-        "userId": 0
-    }
-]
-
 
 // ---- Utilities ----
 function domainFromUrl(url = "") {
@@ -809,31 +562,7 @@ function domainFromUrl(url = "") {
   }
 }
 
-// function timeAgo(ts?: number) {
-//   // Guard against undefined or invalid timestamps
-//   console.log("time:" + ts);
-  
-//   if (typeof ts !== "number" || isNaN(ts)) {
-//     return "0s";
-//   }
 
-//   const deltaMs = Date.now() - ts;
-//   // If timestamp is in the future, treat as just now
-//   const seconds = Math.max(0, Math.floor(deltaMs / 1000));
-
-//   const intervals = [
-//     { label: "y", secs: 31536000 },
-//     { label: "mo", secs: 2592000 },
-//     { label: "d", secs: 86400 },
-//     { label: "h", secs: 3600 },
-//     { label: "m", secs: 60 },
-//   ];
-//   for (const i of intervals) {
-//     const count = Math.floor(seconds / i.secs);
-//     if (count >= 1) return `${count}${i.label}`;
-//   }
-//   return `${seconds}s`;
-// }
 function timeAgo(ts?: string | number) {
   if (!ts) return "0s ago";
 
@@ -1123,6 +852,7 @@ interface ItemCardProps {
     user?: string;
     author?: string;
     category?: string;
+    category_name?: string;
     comments?: any[] | null;
     created_at?: number;
     tags?: string[] | null;
@@ -1250,7 +980,7 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
                 </Badge>
                 
                 <Badge variant="outline" className="capitalize px-2 py-1 text-xs border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-400">
-                  {CATEGORIES.find(c => c._id === item.category)?.icon} {item.category}
+                  {CATEGORIES.find(c => c._id === item.category || c._id === item.category_name)?.icon} {item.category || item.category_name}
                 </Badge>
                 
                 <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 ml-auto">
@@ -1309,7 +1039,7 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
               )}
 
               {/* AI Prompt Buttons */}
-              {item.type === "prompt" && (
+              {item.type === "aiprompt" && (
                 <div className="flex gap-2 pt-2">
                   <Button
                     size="sm"
@@ -1947,90 +1677,90 @@ function CreateContentModal({
   };
 
   const handleSubmit = async (e: { preventDefault: () => void; }) => {
-    // e.preventDefault();
+    e.preventDefault();
     
-    // if (!currentUser) {
-    //   onRequireAuth?.();
-    //   return;
-    // }
+    if (!currentUser) {
+      onRequireAuth?.();
+      return;
+    }
 
-    // const formErrors = validateForm();
-    // if (Object.keys(formErrors).length > 0) {
-    //   setErrors(formErrors);
-    //   return;
-    // }
+    const formErrors = validateForm();
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
+      return;
+    }
 
-    // setIsLoading(true);
-    // setErrors({});
+    setIsLoading(true);
+    setErrors({});
 
-    // // Simulate a brief delay for better UX
-    // await simulateDelay(500);
+    // Simulate a brief delay for better UX
+    await simulateDelay(500);
 
-    // let content = "";
-    // let finalAuthor = "";
+    let content = "";
+    let finalAuthor = "";
     
-    // if (type === "quote") {
-    //   content = quote;
-    //   finalAuthor = author;
-    // } else if (type === "prompt") {
-    //   content = promptDetails;
-    // } else if (type === "book") {
-    //   content = summary;
-    //   finalAuthor = author;
-    // }
+    if (type === "quote") {
+      content = quote;
+      finalAuthor = author;
+    } else if (type === "prompt") {
+      content = promptDetails;
+    } else if (type === "book") {
+      content = summary;
+      finalAuthor = author;
+    }
     
-    // const payload = {
-    //   userId: currentUser.id,
-    //   type,
-    //   title: title.trim(),
-    //   content: content.trim(),
-    //   author: finalAuthor.trim(),
-    //   url: url.trim(),
-    //   category,
-    //   tags: tags.split(",").map(t => t.trim().toLowerCase()).filter(Boolean),
-    // };
+    const payload = {
+      userId: currentUser.id,
+      type,
+      title: title.trim(),
+      content: content.trim(),
+      author: finalAuthor.trim(),
+      url: url.trim(),
+      category,
+      tags: tags.split(",").map(t => t.trim().toLowerCase()).filter(Boolean),
+    };
     
-    // console.log("Submitted payload:", payload);
-    //       const response = await ApiService.createContent(payload);
-    //       console.log("Created content:", response.id);
-    // if (response.id === undefined || response.id === null) {
-    //   showErrorToast(response.message || "Failed to create content. Please try again.");
-    //   setIsLoading(false);
-    //   return;
-    // }
-    
-    
-    
-    // // Create the item object for local state
-    // const newItem = {
-    //   id: response.id || "", // Use the ID returned from the API
-    //   ...payload,
-    //   points: 0,
-    //   views: 0,
-    //   comments: [],
-    //   user: `@${currentUser.username}`,
-    //   created_at: Date.now(),
-    // };
-    // console.log("New item to add:", newItem);
+    console.log("Submitted payload:", payload);
+          const response = await ApiService.createContent(payload);
+          console.log("Created content:", response.id);
+    if (response.id === undefined || response.id === null) {
+      showErrorToast(response.message || "Failed to create content. Please try again.");
+      setIsLoading(false);
+      return;
+    }
     
     
-    // onSubmit(newItem);
     
-    // // Reset form
-    // setStep(1);
-    // setTitle("");
-    // setQuote("");
-    // setAuthor("");
-    // setPromptDetails("");
-    // setUrl("");
-    // setSummary("");
-    // setTags("");
-    // setType("prompt");
-    // setCategory("");
+    // Create the item object for local state
+    const newItem = {
+      id: response.id || "", // Use the ID returned from the API
+      ...payload,
+      points: 0,
+      views: 0,
+      comments: [],
+      user: `@${currentUser.username}`,
+      created_at: Date.now(),
+    };
+    console.log("New item to add:", newItem);
     
-    // showSuccessToast("Content created successfully!");
-    // setIsLoading(false);
-    // onClose();
+    
+    onSubmit(newItem);
+    
+    // Reset form
+    setStep(1);
+    setTitle("");
+    setQuote("");
+    setAuthor("");
+    setPromptDetails("");
+    setUrl("");
+    setSummary("");
+    setTags("");
+    setType("prompt");
+    setCategory("");
+    
+    showSuccessToast("Content created successfully!");
+    setIsLoading(false);
+    onClose();
   };
 
   const handleClose = () => {
@@ -3510,7 +3240,9 @@ interface Item {
   author: string;
   points: number;
   content: string;
-  category: string;    // e.g. "Career"
+  category: string;     // e.g. "Career"
+  category_name: string;  // e.g. "Career"
+  category_id: string;    // e.g. "Career"
   comments: Comment[] | null;
   created_at: number;   // timestamp (ms since epoch)
   userId: number;
@@ -3617,6 +3349,9 @@ console.log(newCategory);
     if (typeId === activeType) return;
     
     setIsLoading(true);
+    if(typeId === "prompt"){
+      typeId = "aiprompt"
+    }
     setActiveType(typeId);
     setCurrentPage(1);
     
@@ -3630,7 +3365,7 @@ console.log(newCategory);
       if (response.items) {
         console.log("Setting items from API response:", response.items);
         
-        setItems(response.items);
+        setItems(response.items || response.posts);
       } else {
         // Fallback: use existing items filtered by type
         console.log("No items in API response, using local filtering");
@@ -3690,8 +3425,8 @@ console.log(newCategory);
     setCurrentPage(1);
     
     // If not on "all" category, switch to the item's category
-    if (activeCategory !== "all" && activeCategory !== newItem.category) {
-      setActiveCategory(newItem.category);
+    if (activeCategory !== "all" && activeCategory !== newItem.category_id) {
+      setActiveCategory(newItem.category_id || newItem.category);
     }
   }
 
