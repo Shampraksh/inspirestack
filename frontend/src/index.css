@@ -1,5 +1,9 @@
 /*! tailwindcss v4.1.3 | MIT License | https://tailwindcss.com */
-@layer properties {
+
+
+
+
+ @layer properties {
   @supports (((-webkit-hyphens: none)) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color: rgb(from red r g b)))) {
     *, :before, :after, ::backdrop {
       --tw-translate-x: 0;
@@ -491,10 +495,6 @@
     position: relative;
   }
 
-  .static {
-    position: static;
-  }
-
   .sticky {
     position: sticky;
   }
@@ -625,7 +625,7 @@
 
   .mt-16 {
     margin-top: calc(var(--spacing) * 16);
-  }
+}
 
   .mt-auto {
     margin-top: auto;
@@ -715,8 +715,17 @@
     height: calc(var(--spacing) * 9);
   }
 
+  .size-full {
+    width: 100%;
+    height: 100%;
+  }
+
   .h-0\.5 {
     height: calc(var(--spacing) * .5);
+  }
+
+  .h-2\.5 {
+    height: calc(var(--spacing) * 2.5);
   }
 
   .h-3 {
@@ -763,6 +772,10 @@
     height: calc(var(--spacing) * 24);
   }
 
+  .h-\[250px\] {
+    height: 250px;
+  }
+
   .h-auto {
     height: auto;
   }
@@ -789,6 +802,10 @@
 
   .min-h-screen {
     min-height: 100vh;
+  }
+
+  .w-2\.5 {
+    width: calc(var(--spacing) * 2.5);
   }
 
   .w-3 {
@@ -960,6 +977,10 @@
     cursor: pointer;
   }
 
+  .touch-none {
+    touch-action: none;
+  }
+
   .resize-none {
     resize: none;
   }
@@ -1094,6 +1115,10 @@
     border-radius: .25rem;
   }
 
+  .rounded-\[inherit\] {
+    border-radius: inherit;
+  }
+
   .rounded-full {
     border-radius: 3.40282e38px;
   }
@@ -1217,6 +1242,14 @@
     .border-white\/80 {
       border-color: color-mix(in oklab, var(--color-white) 80%, transparent);
     }
+  }
+
+  .border-t-transparent {
+    border-top-color: #0000;
+  }
+
+  .border-l-transparent {
+    border-left-color: #0000;
   }
 
   .bg-accent {
@@ -1466,6 +1499,10 @@
     padding: calc(var(--spacing) * 6);
   }
 
+  .p-px {
+    padding: 1px;
+  }
+
   .px-2 {
     padding-inline: calc(var(--spacing) * 2);
   }
@@ -1528,6 +1565,10 @@
 
   .pr-2 {
     padding-right: calc(var(--spacing) * 2);
+  }
+
+  .pr-4 {
+    padding-right: calc(var(--spacing) * 4);
   }
 
   .pr-10 {
@@ -2207,6 +2248,11 @@
     .focus-visible\:ring-ring\/50:focus-visible {
       --tw-ring-color: color-mix(in oklab, var(--ring) 50%, transparent);
     }
+  }
+
+  .focus-visible\:outline-1:focus-visible {
+    outline-style: var(--tw-outline-style);
+    outline-width: 1px;
   }
 
   .disabled\:pointer-events-none:disabled {
@@ -3048,7 +3094,7 @@
       color: var(--accent-foreground);
     }
   }
-}
+} 
 
 :root {
   --font-size: 16px;
@@ -3457,3 +3503,8 @@ html {
     transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1)) rotate(var(--tw-exit-rotate, 0));
   }
 }
+
+
+  html, body, #container, #container > div {
+    height: 100%;
+} 

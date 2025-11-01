@@ -21,7 +21,7 @@ const connectDB = async () => {
     
     // Test connection
     const connection = await pool.getConnection();
-    logger.info('MySQL connected successfully');
+    // logger.info('MySQL connected successfully');
     connection.release();
     
     // Initialize database schema
@@ -213,12 +213,44 @@ const initializeSchema = async () => {
       await connection.execute(`CREATE TABLE IF NOT EXISTS ${table} ENGINE=InnoDB`);
     }
 
+    // Comments table - uses post_id to reference any content type
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS comments (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        post_id INT NOT NULL,
+        post_type ENUM('quote', 'article', 'book', 'video', 'aiprompt') NOT NULL,
+        user_id INT NOT NULL,
+        comment TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        is_deleted TINYINT(1) DEFAULT 0,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_post (post_id, post_type),
+        INDEX idx_user (user_id),
+        INDEX idx_deleted_created (is_deleted, created_at DESC)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
 
-
-
+    // Votes table - uses post_id to reference any content type
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS votes (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        post_id INT NOT NULL,
+        post_type ENUM('quote', 'article', 'book', 'video', 'aiprompt') NOT NULL,
+        user_id INT NOT NULL,
+        vote_type ENUM('up', 'down') NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        is_deleted TINYINT(1) DEFAULT 0,
+        UNIQUE KEY unique_vote (post_id, post_type, user_id),
+        INDEX idx_post (post_id, post_type),
+        INDEX idx_user (user_id),
+        INDEX idx_deleted (is_deleted)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
 
     connection.release();
-    logger.info('MySQL schema initialized successfully');
+    // logger.info('MySQL schema initialized successfully');
   } catch (error) {
     logger.error('MySQL schema initialization failed:', error);
     throw error;

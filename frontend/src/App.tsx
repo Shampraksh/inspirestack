@@ -1,5 +1,5 @@
-import React, { useMemo, useState, useEffect, createContext, useContext } from "react";
-import { ArrowBigUp, ArrowBigDown, MessageSquare, Link as LinkIcon, Quote, Wand2, Plus, Flame, Clock, Star, Search, Tag, Menu, Send, BookOpen, Video, LogIn, ChevronLeft, ChevronRight, Loader2, X, Check, AlertCircle, Info, ChevronDown, ChevronUp, Copy, Trash2, Bot, Sparkles, Sun, Moon, Monitor, FileText, Link2, MoreHorizontal, Eye, EyeOff } from "lucide-react";
+import React, { useMemo, useState, useEffect, createContext, useContext, useRef, useCallback } from "react";
+import { ArrowBigUp, ArrowBigDown, MessageSquare, Atom, Link as LinkIcon, Quote, Wand2, Plus, Flame, Clock, Star, Search, Tag, Menu, Send, BookOpen, Video, LogIn, ChevronLeft, ChevronRight, Loader2, X, Check, AlertCircle, Info, ChevronDown, ChevronUp, Copy, Trash2, Bot, Sparkles, Sun, Moon, Monitor, FileText, Link2, MoreHorizontal, Eye, EyeOff } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 
@@ -17,18 +17,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescri
 import { Skeleton } from "./components/ui/skeleton";
 import { Toaster } from "./components/ui/sonner";
 import { ScrollArea } from "./components/ui/scroll-area";
-// import { log } from "console";
 import bcrypt from "bcryptjs";
 import { GoogleOAuthProvider, useGoogleLogin, CredentialResponse, GoogleLogin } from "@react-oauth/google";
 import axios from "axios";
-import { log } from "node:console";
-import { it } from "node:test";
-// import { OTPInput } from 'input-otp@1.4.2';
-
 
 /**
- * InspireLens — Professional Content Sharing Platform
- * Enhanced with theme modes, improved auth, and comprehensive functionality
+ * InspireLens – Professional Content Sharing Platform
+ * Optimized with efficient state updates for voting and comments
  */
 
 // Theme Context
@@ -36,36 +31,29 @@ const ThemeContext = createContext({
   theme: "system",
   setTheme: (_theme: any) => {},
 });
-const CLIENT_ID = "942589748245-hvrpckombpd3bsnknp46fltgpilnb14b.apps.googleusercontent.com";//local react
-// const CLIENT_ID =
-//   "677006637777-quu3bqfs11q5uj4ebqk3unsm8sstqmm4.apps.googleusercontent.com"; //local jsp
+
+const CLIENT_ID = "942589748245-hvrpckombpd3bsnknp46fltgpilnb14b.apps.googleusercontent.com";
 const API_BASE_URL = 'http://localhost:8080';
+
 class ApiService {
   static async request(endpoint: string, options: RequestInit & { headers?: Record<string, string> } = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
-    console.log("url: " + url);
     
-    console.log("API Request to:", url, "with options:", options);
-
-    // Default headers
     const defaultHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
 
-    // Add auth token if available
     const user = JSON.parse(localStorage.getItem("inspirelens_user") || "null");
     if (user?.token) {
       defaultHeaders['Authorization'] = `Bearer ${user.token}`;
     }
 
-    // Merge headers safely (options.headers may be undefined)
     const mergedHeaders: Record<string, string> = {
       ...defaultHeaders,
       ...(options.headers || {}),
     };
 
-    // Build fetch config using RequestInit
     const config: RequestInit = {
       ...options,
       headers: mergedHeaders as HeadersInit,
@@ -91,7 +79,6 @@ class ApiService {
     }
   }
 
-
   static async get(endpoint: string, params = {}) {
     const queryString = new URLSearchParams(params).toString();
     const url = queryString ? `${endpoint}?${queryString}` : endpoint;
@@ -99,11 +86,11 @@ class ApiService {
   }
 
   static async post(endpoint: string, data = {}) {
-      return this.request(endpoint, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-    }
+    return this.request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
 
   static async put(endpoint: string, data = {}) {
     return this.request(endpoint, {
@@ -111,22 +98,20 @@ class ApiService {
       body: JSON.stringify(data),
     });
   }
-  // Removed duplicate request implementation to fix compile error.
 
   static async delete(endpoint: string) {
     return this.request(endpoint, { method: 'DELETE' });
   }
-//all post
+
   static async getAllPosts() {
     return this.get('/');
   }
 
+  static async getAllCategories() {
+    return this.get('/categories');
+  }
 
-  // Category API
   static async getContentByCategory(category: string, page = 1, type = 'all') {
-    console.log("Fetching content for category:", category, "page:", page, "type:", type , "limit:", ITEMS_PER_PAGE);
-    
-
     return this.get('/content-type', { 
       category: category === 'all' ? undefined : category,
       type: type === 'all' ? undefined : type,
@@ -135,7 +120,6 @@ class ApiService {
     });
   }
 
-  // Content Type API
   static async getContentByType(type: React.SetStateAction<string>, page = 1, category = 'all') {
     return this.get('/content-type', { 
       type: type === 'all' ? undefined : type,
@@ -145,10 +129,10 @@ class ApiService {
     });
   }
 
-  // Authentication API
   static async login(credentials: {} | undefined) {
     return this.post('/auth/login', credentials);
   }
+
   static async checkEmail(email: { email: any; }) {
     return this.get('/auth/check-email', email);
   }
@@ -157,14 +141,10 @@ class ApiService {
     return this.post('/auth/signup', userData);
   }
 
-static async googleAuth(response: CredentialResponse) {
-  const idToken = response.credential;
-  console.log("Token ID:", idToken);
-
-  return this.post("/auth/google", {
-    tokenId: idToken, // send as JSON object
-  });
-}
+  static async googleAuth(response: CredentialResponse) {
+    const idToken = response.credential;
+    return this.post("/auth/google", { tokenId: idToken });
+  }
 
   static async forgotPassword(email: any) {
     return this.post('/auth/forgot-password', { email });
@@ -174,18 +154,36 @@ static async googleAuth(response: CredentialResponse) {
     return this.post('/auth/logout');
   }
 
-    // Theme API
+  static async updateTheme(theme: string, userId: string): Promise<UpdateThemeResponse> {
+    const response = await this.put('/auth/theme', { theme, userId });
+    return response;
+  }
 
+  static async vote(contentId: any, contentType: any, voteType: 'upvote' | 'downvote', userId: any) {
+    return this.put(`/content-type/${contentId}/vote`, { 
+      contentType,
+      voteType,
+      userId 
+    });
+  }
 
-    static async updateTheme(theme: string, userId: string): Promise<UpdateThemeResponse> {
-        console.log("Updating theme to:", theme, "for userId:", userId);
+  static async addComment(contentId: any, postType: any, comment: any, userId: any) {
+    return this.post(`/posts/${contentId}/comments`, {
+      comment: comment,
+      postType: postType,
+      userId: userId
+    });
+  }
 
-        const response = await this.put('/auth/theme', { theme, userId });
-        return response;
-    }
+  static async deleteComment(contentId: any, commentId: any, userId: any) {
+    return this.delete(`/posts/deleteComment/${contentId}/comments/${commentId}?userId=${userId}`);
+  }
 
-
+  static async createContent(contentData: {} | undefined) {
+    return this.post('/posts/addContent', contentData);
+  }
 }
+
 const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
@@ -202,41 +200,26 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
     return "system";
   });
 
-  // const updateTheme = (newTheme) => {
-  //   setTheme(newTheme);
-  //   showSuccessToast("Theme updated successfully!");
-  // };
-const updateTheme = async (newTheme: string) => {
-  const user = JSON.parse(localStorage.getItem("inspirelens_user") || "null");
-  const userId = user?.id;
+  const updateTheme = async (newTheme: string) => {
+    const user = JSON.parse(localStorage.getItem("inspirelens_user") || "null");
+    const userId = user?.id;
 
-  if (!userId) {
-    setTheme(newTheme); // Update locally even if not logged in
-    return;
-  }
+    if (!userId) {
+      setTheme(newTheme);
+      return;
+    }
 
-  console.log("Updating theme for userId:", userId);
-  console.log("New theme:", newTheme);
-
-  // try {
-  //   // Update locally first for instant UI response
-    
-  //   setTheme(newTheme);
-
-  //   // Send update to server
-  //   const response = await ApiService.updateTheme(newTheme, userId);
-  //   console.log("Server response:", response);
-  // user.mode = newTheme; // Update local user object
-  // localStorage.setItem("inspirelens_user", JSON.stringify(user)); // Save updated user back to localStorage
-
-  //   showSuccessToast("Theme updated successfully!");
-  // } catch (error: any) {
-  //   console.error("Failed to update theme:", error);
-  //   // Optionally revert local theme if server update fails
-  //   showErrorToast("Theme updated locally, but failed to sync with server");
-  // }
-};
-
+    try {
+      setTheme(newTheme);
+      const response = await ApiService.updateTheme(newTheme, userId);
+      user.mode = newTheme;
+      localStorage.setItem("inspirelens_user", JSON.stringify(user));
+      showSuccessToast("Theme updated successfully!");
+    } catch (error: any) {
+      console.error("Failed to update theme:", error);
+      showErrorToast("Theme updated locally, but failed to sync with server");
+    }
+  };
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -252,7 +235,6 @@ const updateTheme = async (newTheme: string) => {
     localStorage.setItem("inspirelens-theme", theme);
   }, [theme]);
 
-  // Listen for system theme changes
   useEffect(() => {
     if (theme === "system") {
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -279,75 +261,15 @@ const updateTheme = async (newTheme: string) => {
   );
 }
 
-
-
-
-
-const CATEGORIES = [
-    {
-        "id": 1,
-        "_id": "all",
-        "icon": "🌟",
-        "name": "All",
-        "color": "bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200"
-    },
-    {
-        "id": 2,
-        "_id": "mindset",
-        "icon": "🧠",
-        "name": "Mindset",
-        "color": "bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-slate-200"
-    },
-    {
-        "id": 3,
-        "_id": "productivity",
-        "icon": "⚡",
-        "name": "Productivity",
-        "color": "bg-slate-300 hover:bg-slate-400 text-slate-900 dark:bg-slate-500 dark:hover:bg-slate-400 dark:text-slate-100"
-    },
-    {
-        "id": 4,
-        "_id": "leadership",
-        "icon": "👑",
-        "name": "Leadership",
-        "color": "bg-slate-400 hover:bg-slate-500 text-white dark:bg-slate-400 dark:hover:bg-slate-300 dark:text-slate-900"
-    },
-    {
-        "id": 5,
-        "_id": "learning",
-        "icon": "📚",
-        "name": "Learning",
-        "color": "bg-slate-500 hover:bg-slate-600 text-white dark:bg-slate-300 dark:hover:bg-slate-200 dark:text-slate-900"
-    },
-    {
-        "id": 6,
-        "_id": "wellbeing",
-        "icon": "🌿",
-        "name": "Wellbeing",
-        "color": "bg-slate-600 hover:bg-slate-700 text-white dark:bg-slate-200 dark:hover:bg-slate-100 dark:text-slate-900"
-    },
-    {
-        "id": 7,
-        "_id": "spirituality",
-        "icon": "🙏",
-        "name": "Spirituality",
-        "color": "bg-slate-700 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-50 dark:text-slate-900"
-    },
-    {
-        "id": 8,
-        "_id": "relationship",
-        "icon": "💝",
-        "name": "Relationship",
-        "color": "bg-slate-800 hover:bg-slate-900 text-white dark:bg-slate-50 dark:hover:bg-white dark:text-slate-900"
-    },
-    {
-        "id": 9,
-        "_id": "career",
-        "icon": "🚀",
-        "name": "Career",
-        "color": "bg-slate-900 hover:bg-black text-white dark:bg-white dark:hover:bg-gray-50 dark:text-slate-900"
-    }
-]
+const CATEGORIES = await (async () => {
+  try {
+    const response = await ApiService.getAllCategories();
+    return response.categories;
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    return [];
+  }
+})();
 
 const TYPE_META = {
   quote: { icon: <Quote className="w-4 h-4" />, label: "Quote", color: "text-slate-700 dark:text-slate-300", bg: "bg-slate-100 border-slate-300 dark:bg-slate-700 dark:border-slate-500" },
@@ -359,116 +281,11 @@ const TYPE_META = {
 
 const ITEMS_PER_PAGE = 10;
 
-// Generate sample data with only allowed content types
-// const initialItems = [
-//   {
-//     id: 1,
-//     type: "quote",
-//     title: "You do not rise to the level of your goals, you fall to the level of your systems.",
-//     content: "— James Clear",
-//     author: "James Clear",
-//     url: "",
-//     category: "productivity",
-//     points: 178,
-//     tags: ["habits", "systems", "james-clear"],
-//     views: 1543,
-//     comments: [
-//       { id: 1, user: "@delta", text: "This changed how I plan my week!", createdAt: Date.now() - 36e5 * 3, createdBy: "@delta" },
-//       { id: 2, user: "@mike", text: "Systems > goals, always.", createdAt: Date.now() - 36e5 * 2, createdBy: "@mike" },
-//     ],
-//     user: "@clarity",
-//     createdAt: Date.now() - 1000 * 60 * 60 * 5,
-//   },
-//   {
-//     id: 2,
-//     type: "prompt",
-//     title: "Daily Reflection Coach",
-//     content: "Act as a compassionate coach. Ask me 3 questions: (1) What energized you today? (2) What drained you? (3) One tiny improvement for tomorrow. Summarize as 3 bullet actions.",
-//     url: "",
-//     category: "mindset",
-//     points: 245,
-//     tags: ["journaling", "evening-review"],
-//     views: 2187,
-//     comments: [
-//       { id: 1, user: "@sunny", text: "I paired this with Habitica—works great.", createdAt: Date.now() - 36e5 * 6, createdBy: "@sunny" },
-//     ],
-//     user: "@seedling",
-//     createdAt: Date.now() - 1000 * 60 * 60 * 20,
-//   },
-//   {
-//     id: 3,
-//     type: "article",
-//     title: "The Feynman Technique: Learn Anything Faster",
-//     content: "",
-//     url: "https://fs.blog/feynman-learning-technique/",
-//     category: "learning",
-//     points: 312,
-//     tags: ["learning", "explain-like-5"],
-//     views: 3456,
-//     comments: [
-//       { id: 1, user: "@learner", text: "I use this for interviews!", createdAt: Date.now() - 36e5 * 15, createdBy: "@learner" },
-//       { id: 2, user: "@sara", text: "Great domain link.", createdAt: Date.now() - 36e5 * 10, createdBy: "@sara" },
-//       { id: 3, user: "@teacher", text: "This technique changed how I explain complex topics to my students.", createdAt: Date.now() - 36e5 * 8, createdBy: "@teacher" },
-//       { id: 4, user: "@developer", text: "Works great for understanding new programming concepts!", createdAt: Date.now() - 36e5 * 6, createdBy: "@developer" },
-//       { id: 5, user: "@researcher", text: "I've been using this for my PhD research. Highly recommend!", createdAt: Date.now() - 36e5 * 4, createdBy: "@researcher" },
-//     ],
-//     user: "@learnfast",
-//     createdAt: Date.now() - 1000 * 60 * 60 * 48,
-//   },
-//   {
-//     id: 4,
-//     type: "book",
-//     title: "Atomic Habits",
-//     content: "Small improvements compound over time. Identity-based habits are key to lasting change.",
-//     author: "James Clear",
-//     url: "https://jamesclear.com/atomic-habits",
-//     category: "productivity",
-//     points: 88,
-//     tags: ["book-notes", "habits"],
-//     views: 1234,
-//     comments: [],
-//     user: "@reader",
-//     createdAt: Date.now() - 1000 * 60 * 60 * 18,
-//   },
-//   {
-//     id: 5,
-//     type: "video",
-//     title: "Naval Ravikant on Wealth & Happiness",
-//     content: "",
-//     url: "https://youtu.be/example",
-//     category: "mindset",
-//     points: 134,
-//     tags: ["interview", "naval", "happiness"],
-//     views: 4567,
-//     comments: [],
-//     user: "@listener",
-//     createdAt: Date.now() - 1000 * 60 * 60 * 6,
-//   },
-//   // Add more sample items
-//   ...Array.from({ length: 45 }, (_, i) => ({
-//     id: i + 6,
-//     type: ["quote", "prompt", "article", "book", "video"][Math.floor(Math.random() * 5)],
-//     title: `Sample Content Title ${i + 6}`,
-//     content: `Sample content description for item ${i + 6}. This demonstrates pagination and loading states.`,
-//     author: `Author ${i + 6}`,
-//     url: i % 3 === 0 ? `https://example.com/${i + 6}` : "",
-//     category: CATEGORIES[Math.floor(Math.random() * 8) + 1]._id,
-//     points: Math.floor(Math.random() * 500),
-//     tags: ["sample", "demo", `tag-${i}`],
-//     views: Math.floor(Math.random() * 5000),
-//     comments: [],
-//     user: `@user${i + 6}`,
-//     createdAt: Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30,
-//   })),
-// ];
-
-
-
-
 interface UpdateThemeResponse {
   message: string;
   theme: string;
 }
+
 function postLenght(postCounts: any) {
   const total =
     postCounts[0].article_count +
@@ -482,13 +299,8 @@ function postLenght(postCounts: any) {
 const initialItems: any[] = await (async () => {
   try {
     const posts = await ApiService.getAllPosts();
-    console.log("Fetched posts:", posts.posts);
-
-    // Calculate total items across all counts
     const totalItems = postLenght(posts.posts);
-    console.log("Total items count:", totalItems);
 
-    // Combine real posts and placeholders to match totalItems
     const itemsArray = Array.from({ length: totalItems }, (_, i) => {
       const post = posts.posts[i];
       return post
@@ -499,18 +311,15 @@ const initialItems: any[] = await (async () => {
             content: post.content || "",
             author: post.author || "",
             url: post.url || "",
+            category_id: post.category_id || "",
             category: post.category_name || "",
             points: post.points || null,
+            points_count: post.points_count || 0,
             tags: post.tags || [],
             views: post.views || 0,
             comments: post.comments || [],
             user: post.username || "",
             createdAt: post.created_at || Date.now(),
-            quote_count: post.quote_count || 0,
-            book_count: post.book_count || 0,
-            article_count: post.article_count || 0,
-            aiprompt_count: post.aiprompt_count || 0,
-            video_count: post.video_count || 0,
           }
         : {
             id: null,
@@ -521,20 +330,15 @@ const initialItems: any[] = await (async () => {
             url: "",
             category: "",
             points: null,
+            points_count: 0,
             tags: [],
             views: 0,
             comments: [],
             user: "",
             createdAt: null,
-            quote_count: 0,
-            book_count: 0,
-            article_count: 0,
-            aiprompt_count: 0,
-            video_count: 0,
           };
     });
 
-    console.log("Items array:", itemsArray);
     return itemsArray;
   } catch (e) {
     console.log(e);
@@ -542,16 +346,7 @@ const initialItems: any[] = await (async () => {
   }
 })();
 
-
-
-
-
-
-
-
-
-
-// ---- Utilities ----
+// Utilities
 function domainFromUrl(url = "") {
   try {
     if (!url) return "";
@@ -562,13 +357,10 @@ function domainFromUrl(url = "") {
   }
 }
 
-
 function timeAgo(ts?: string | number) {
   if (!ts) return "0s ago";
 
-  // Convert string timestamp to number (milliseconds)
   const timestamp = typeof ts === "string" ? new Date(ts).getTime() : ts;
-
   if (isNaN(timestamp)) return "0s ";
 
   const deltaSeconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
@@ -589,24 +381,16 @@ function timeAgo(ts?: string | number) {
   return `${deltaSeconds}s`;
 }
 
-
-
 function formatNumber(num: number) {  
   if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
   if (num >= 1000) return (num / 1000).toFixed(1) + "K";
   return num.toString();
 }
 
-
-// API Utility Functions
-
-
-// Fallback function for simulating delays
 function simulateDelay(delay = 300) {
   return new Promise(resolve => setTimeout(resolve, delay));
 }
 
-// Form validation
 function validateEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -630,7 +414,7 @@ function validateUrl(url: string) {
   }
 }
 
-// ---- Toast Utilities ----
+// Toast Utilities
 const showSuccessToast = (message: string | number | bigint | boolean | (() => React.ReactNode) | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined) => {
   toast.success(message, {
     duration: 4000,
@@ -642,8 +426,6 @@ const showSuccessToast = (message: string | number | bigint | boolean | (() => R
     },
   });
 };
-
-
 
 const showInfoToast = (message: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | (() => React.ReactNode) | null | undefined) => {
   toast.info(message, {
@@ -657,20 +439,28 @@ const showInfoToast = (message: string | number | bigint | boolean | React.React
   });
 };
 
-// Enhanced copy utility function
+// function showErrorToast(message: string) {
+//   toast.error(message, {
+//     duration: 4000,
+//     style: {
+//       background: '#dc2626',
+//       color: 'white',
+//       border: 'none',
+//       borderRadius: '8px',
+//     },
+//   });
+// }
+
 async function copyToClipboard(text: string) {
   try {
-    // Try modern clipboard API first
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text);
       return { success: true, method: 'clipboard' };
     }
   } catch (error) {
-    // Clipboard API failed, try fallback
     console.log('Clipboard API not available, using fallback');
   }
   
-  // Fallback method for when clipboard API is not available
   try {
     const textArea = document.createElement("textarea");
     textArea.value = text;
@@ -690,7 +480,7 @@ async function copyToClipboard(text: string) {
   }
 }
 
-// ---- Skeleton Components ----
+// Skeleton Components
 function SkeletonCard() {
   return (
     <Card className="w-full border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
@@ -721,7 +511,7 @@ function SkeletonCard() {
   );
 }
 
-// ---- Logo Component ----
+// Logo Component
 function InspireLensLogo({ size = "md" }: { size?: 'sm' | 'md' | 'lg' | 'xl' }) {
   const sizeClasses = {
     sm: "w-8 h-8",
@@ -732,21 +522,18 @@ function InspireLensLogo({ size = "md" }: { size?: 'sm' | 'md' | 'lg' | 'xl' }) 
 
   return (
     <div className={`${sizeClasses[size]} rounded-xl bg-gradient-to-br from-slate-700 via-slate-600 to-slate-800 dark:from-slate-200 dark:via-slate-300 dark:to-slate-100 grid place-items-center shadow-lg relative overflow-hidden`}>
-      {/* Background pattern */}
       <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent dark:via-black/10"></div>
-      
-      {/* Main logo elements */}
       <div className="relative flex items-center justify-center">
         <div className="absolute w-3 h-3 bg-white/90 dark:bg-slate-800/90 rounded-full animate-pulse"></div>
         <div className="w-6 h-6 border-2 border-white/80 dark:border-slate-800/80 rounded-full flex items-center justify-center">
-          <Sparkles className="w-3 h-3 text-white/90 dark:text-slate-800/90" />
+          <Atom className="w-3 h-3 text-white/90 dark:text-slate-800/90" />
         </div>
       </div>
     </div>
   );
 }
 
-// ---- Theme Toggle Component ----
+// Theme Toggle Component
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
 
@@ -777,32 +564,49 @@ function ThemeToggle() {
   );
 }
 
-// ---- Enhanced UI Components ----
+// Types
+interface Vote {
+  id: number;
+  user_id: number;
+  username: string;
+  vote_type: "up" | "down";
+  created_at: string;
+}
+
 interface VoteColumnProps {
   points: number;
+  postType: string;
   onUp: () => void;
   onDown: () => void;
   voted: number;
+  pointsUser: Vote[];
 }
 
-function VoteColumn({ points, onUp, onDown, voted }: VoteColumnProps) {
-  // console.log("VoteColumn render - voted:", voted, "points:", points);
-  //  console.log("VoteColumn render - voted:", voted, "points:", points);
-  if (Array.isArray(points)) {
-    points = points.length ? points.length : 0;
-  }
+function VoteColumn({
+  points,
+  postType,
+  onUp,
+  onDown,
+  voted,
+  pointsUser,
+}: VoteColumnProps) {
+  const currentUser = JSON.parse(localStorage.getItem("inspirelens_user") || "null");
+  const userVote = pointsUser.find((vote) => vote.user_id === currentUser?.id);
+  postType = postType.toLowerCase();
+  voted = userVote?.vote_type === "up" ? 1 : userVote?.vote_type === "down" ? -1 : 0;
+
   return (
-    <motion.div 
+    <motion.div
       className="flex flex-col items-center gap-2 min-w-[50px]"
       whileHover={{ scale: 1.02 }}
     >
       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
         <Button
-          variant={voted === 1 ? "default" : "outline"}
+          variant={userVote?.vote_type === "up" ? "default" : "outline"}
           size="sm"
           className={`w-10 h-8 rounded transition-all duration-200 ${
-            voted === 1 
-              ? "bg-slate-700 hover:bg-slate-800 text-white border-slate-700 dark:bg-slate-300 dark:hover:bg-slate-200 dark:text-slate-900 dark:border-slate-300" 
+            userVote?.vote_type === "up"
+              ? "bg-slate-700 hover:bg-slate-800 text-white border-slate-700 dark:bg-slate-300 dark:hover:bg-slate-200 dark:text-slate-900 dark:border-slate-300"
               : "hover:bg-slate-100 hover:border-slate-400 text-slate-600 border-slate-300 dark:hover:bg-slate-700 dark:hover:border-slate-500 dark:text-slate-400 dark:border-slate-600"
           }`}
           onClick={onUp}
@@ -811,24 +615,24 @@ function VoteColumn({ points, onUp, onDown, voted }: VoteColumnProps) {
           <ArrowBigUp className="w-4 h-4" />
         </Button>
       </motion.div>
-      
-      <motion.div 
+
+      <motion.div
         className="text-sm font-semibold tabular-nums text-center text-slate-700 dark:text-slate-300"
         key={points}
         initial={{ scale: 1.1 }}
         animate={{ scale: 1 }}
         transition={{ duration: 0.2 }}
       >
-        {points != null ? formatNumber(points) : "0"}
+        {formatNumber(points)}
       </motion.div>
-      
+
       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
         <Button
-          variant={voted === -1 ? "destructive" : "outline"}
+          variant={userVote?.vote_type === "down" ? "destructive" : "outline"}
           size="sm"
           className={`w-10 h-8 rounded transition-all duration-200 ${
-            voted === -1 
-              ? "bg-red-600 hover:bg-red-700 text-white border-red-600" 
+            userVote?.vote_type === "down"
+              ? "bg-red-600 hover:bg-red-700 text-white border-red-600"
               : "hover:bg-slate-100 hover:border-slate-400 text-slate-600 border-slate-300 dark:hover:bg-slate-700 dark:hover:border-slate-500 dark:text-slate-400 dark:border-slate-600"
           }`}
           onClick={onDown}
@@ -845,7 +649,8 @@ interface ItemCardProps {
   item: {
     id: number;
     type: string;
-    points: number;
+    points: Vote[] | null;
+    points_count: number;
     url?: string;
     title?: string;
     content?: string;
@@ -854,19 +659,32 @@ interface ItemCardProps {
     category?: string;
     category_name?: string;
     comments?: any[] | null;
-    created_at?: number;
+    createdAt?: string | number;
+    created_at?:string | number;
     tags?: string[] | null;
   };
-  onVote: (id: number, delta: number) => void;
-  onAddComment: (itemId: number, comment: any) => void;
+  onVote: (id: number, delta: number, updatedVotes?: Vote[], postType?: string ) => void;
+  onAddComment: (itemId: number, postType: string, comment: any) => Promise<void>;
   onDeleteComment: (itemId: number, commentId: number) => void;
   onRequireAuth?: () => void;
   currentUser?: { id?: number; username?: string; name?: string } | null;
   index?: number;
 }
 
-function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, currentUser, index = 0 }: ItemCardProps) {
-  const meta = (TYPE_META as Record<string, { icon: React.ReactNode; label: string; color: string; bg: string }>)[item.type] || { icon: null, label: item.type, color: "text-slate-600 dark:text-slate-400", bg: "bg-slate-100 dark:bg-slate-700" };
+const ItemCard = React.memo(({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, currentUser, index = 0 }: ItemCardProps) => {
+  const normalizedType = item.type === "aiprompt" ? "prompt" : item.type;
+
+  const meta =
+    (TYPE_META as Record<
+      string,
+      { icon: React.ReactNode; label: string; color: string; bg: string }
+    >)[normalizedType] || {
+      icon: null,
+      label: normalizedType,
+      color: "text-slate-600 dark:text-slate-400",
+      bg: "bg-slate-100 dark:bg-slate-700",
+    };
+
   const [voted, setVoted] = useState(0);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentText, setCommentText] = useState("");
@@ -874,17 +692,94 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
   const isAuthed = !!currentUser;
   const domain = domainFromUrl(item.url);
 
-  const handleVote = (dir: number) => {
-    let delta = 0;
-    if (dir === 1) {
-      delta = voted === 1 ? -1 : voted === -1 ? 2 : 1;
-      setVoted(voted === 1 ? 0 : 1);
+  useEffect(() => {
+    if (Array.isArray(item.points) && currentUser) {
+      const existingVote = item.points.find((v: Vote) => v.user_id === currentUser.id);
+      if (existingVote) {
+        setVoted(existingVote.vote_type === "up" ? 1 : -1);
+      } else {
+        setVoted(0);
+      }
     } else {
-      delta = voted === -1 ? 1 : voted === 1 ? -2 : -1;
-      setVoted(voted === -1 ? 0 : -1);
+      setVoted(0);
     }
-    onVote(item.id, delta);
-  };
+  }, [item.points, currentUser]);
+
+  const handleVote = useCallback(async (dir: number) => {
+    if (!isAuthed) {
+      onRequireAuth?.();
+      return;
+    }
+
+    const voteType = dir === 1 ? "upvote" : "downvote";
+    let newVotedState: number;
+    let pointsDelta: number;
+
+    if (dir === 1) {
+      if (voted === 1) {
+        newVotedState = 0;
+        pointsDelta = -1;
+      } else if (voted === -1) {
+        newVotedState = 1;
+        pointsDelta = 2;
+      } else {
+        newVotedState = 1;
+        pointsDelta = 1;
+      }
+    } else {
+      if (voted === -1) {
+        newVotedState = 0;
+        pointsDelta = 1;
+      } else if (voted === 1) {
+        newVotedState = -1;
+        pointsDelta = -2;
+      } else {
+        newVotedState = -1;
+        pointsDelta = -1;
+      }
+    }
+
+    const previousVoted = voted;
+    setVoted(newVotedState);
+    onVote(item.id, pointsDelta);
+
+    try {
+      const response = await ApiService.vote(item.id, item.type, voteType, currentUser!.id);
+
+      if (!Array.isArray(response) || response.length === 0) {
+        pointsDelta = pointsDelta - 1;
+        onVote(item.id, pointsDelta, response, item.type);
+      } else {
+        const exists = item.points?.some(
+          (point: Vote) =>
+            point.id === response[0].id &&
+            point.user_id === response[0].user_id &&
+            point.username === response[0].username &&
+            point.vote_type !== response[0].vote_type
+        ) ?? false;
+
+        if (exists) {
+          if (pointsDelta > 0) {
+            pointsDelta = pointsDelta - 1;
+          } else if (pointsDelta < 0) {
+            pointsDelta = pointsDelta + 1;
+          }
+        }
+
+        onVote(item.id, pointsDelta, response, item.type);
+
+        if (newVotedState !== 0) {
+          showInfoToast("Vote recorded successfully!");
+        }
+      }
+    } catch (error) {
+      console.error("❌ Failed to vote:", error);
+      showErrorToast("Failed to record vote. Please try again.");
+      
+      setVoted(previousVoted);
+      onVote(item.id, -pointsDelta);
+    }
+  }, [voted, isAuthed, currentUser, item.id, item.type, item.points, onVote, onRequireAuth]);
 
   const handleCopyUrl = async () => {
     const urlToCopy = item.url || window.location.href;
@@ -898,62 +793,103 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
   };
 
   const handleCopyText = async () => {
-    let textToCopy = "";
-    if (item.type === "quote") {
-      textToCopy = `"${item.title}"\n\n— ${item.author || item.content}`;
-    } else if (item.type === "book") {
-      textToCopy = `${item.title}\nby ${item.author}\n\n${item.content}`;
-    } else if (item.type === "prompt") {
-      textToCopy = `${item.title}\n\n${item.content}`;
-    }
-    
+    const validTypes = ["quote", "book", "aiprompt"];
+    const textToCopy =
+      validTypes.includes(item.type) ? item.title ?? item.content ?? "" : "";
+
     const result = await copyToClipboard(textToCopy);
-    
-    if (result.success) {
+
+    if (result?.success) {
       showSuccessToast("Text copied to clipboard!");
     } else {
       showInfoToast("Unable to copy text. Please copy manually.");
     }
   };
 
-  const handleAddComment = () => {
+  const handleAddComment = useCallback(async () => {
     if (!isAuthed) {
       onRequireAuth?.();
       return;
     }
     const text = commentText.trim();
     if (!text) return;
-    
-    onAddComment(item.id, {
+
+    await onAddComment(item.id, item.type, {
       id: Date.now(),
-      user: `@${currentUser.username}`,
-      userId: currentUser.id,
+      user: `@${currentUser!.username}`,
+      userId: currentUser!.id,
       text,
       created_at: Date.now(),
-      createdBy: `@${currentUser.username}`,
+      createdBy: `@${currentUser!.username}`,
     });
     setCommentText("");
     showSuccessToast("Comment added!");
-  };
+  }, [commentText, isAuthed, currentUser, item.id, item.type, onAddComment, onRequireAuth]);
 
-  const handleDeleteComment = (commentId: number) => {
-    onDeleteComment(item.id, commentId);
-    showSuccessToast("Comment deleted!");
-  };
+  const handleDeleteComment = useCallback(async (commentId: number) => {
+    if (!isAuthed) {
+      onRequireAuth?.();
+      return;
+    }
+    try {
+      const response = await ApiService.deleteComment(item.id, commentId, currentUser!.id);
+      if (response) {
+        onDeleteComment(item.id, commentId);
+        showSuccessToast("Comment deleted!");
+      }
+    } catch (error) {
+      console.error("❌ Failed to delete comment:", error);
+      showErrorToast("Failed to delete comment. Please try again.");
+    }
+  }, [isAuthed, currentUser, item.id, onDeleteComment, onRequireAuth]);
 
-  const openInChatGPT = () => {
-    const prompt = encodeURIComponent(`${item.title}\n\n${item.content}`);
-    window.open(`https://chat.openai.com/?q=${prompt}`, '_blank');
-  };
+const openInChatGPT = async (event : any) => {
+  // Prevent default behavior if this is inside a form or link
+  event?.preventDefault();
+  event?.stopPropagation();
+
+  const content = item?.content?.trim();
+  if (!content) {
+    console.warn("⚠️ No valid content found in item.");
+    return;
+  }
+
+  // Encode the content for safe URL usage
+  const prompt = encodeURIComponent(content);
+  
+  // Use ?q= so ChatGPT search bar is prefilled correctly
+  const chatGPTUrl = `https://chatgpt.com/?q=${prompt}`;
+  const cleanedUrl = chatGPTUrl.endsWith('.') ? chatGPTUrl.slice(0, -1) : chatGPTUrl;
+
+  console.log("🧠 Encoded Prompt:", prompt);
+  console.log("🌐 Opening URL:", cleanedUrl);
+  const result = await copyToClipboard(cleanedUrl);
+
+  if (result?.success) {
+    showSuccessToast("URL copied to clipboard!");
+  }
+
+  // Open ChatGPT in a new tab — does NOT change current tab URL
+  console.log(window.location);
+  
+  // setTimeout(() => {
+  //    window.open(cleanedUrl, "_blank", "noopener,noreferrer,nohistory");
+  // },1000)
+  // window.open(cleanedUrl, "_blank", "noopener,noreferrer");
+};
+
+
+
 
   const openInPerplexity = () => {
-    const prompt = encodeURIComponent(`${item.title}\n\n${item.content}`);
-    window.open(`https://www.perplexity.ai/?q=${prompt}`, '_blank');
+    if (item.content) {
+      window.open(`https://www.perplexity.ai/search/new?q=${item.content}`, '_blank');
+    }
   };
-  // console.log('Rendering ItemCard for item:', item);
-  
+
   const commentsArray = Array.isArray(item.comments) ? item.comments : [];
-  
+  console.log(item.type)
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -965,39 +901,64 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
         <CardContent className="p-4">
           <div className="flex items-start gap-4">
             <VoteColumn
-              points={item.points}
+              points={item.points_count || 0}
+              postType={item.type}
               onUp={() => handleVote(1)}
               onDown={() => handleVote(-1)}
               voted={voted}
+              pointsUser={Array.isArray(item.points) ? item.points : (typeof item.points === 'number' ? [] : item.points !== null ? [item.points as Vote] : [])}
             />
             
-            <div className="flex-1 min-w-0 space-y-3">
-              {/* Header */}
+            <div className="flex-1 min-w-0 space-y-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge className={`${meta.bg} ${meta.color} border px-2 py-1 text-xs`}>
                   {meta.icon}
                   <span className="ml-1">{meta.label}</span>
                 </Badge>
-                
-                <Badge variant="outline" className="capitalize px-2 py-1 text-xs border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-400">
-                  {CATEGORIES.find(c => c._id === item.category || c._id === item.category_name)?.icon} {item.category || item.category_name}
+                <Badge
+                  variant="outline"
+                  className="capitalize px-2 py-1 text-xs border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-400"
+                >
+                  {(() => {
+                    const toCapitalize = (str: string | undefined | null) => {
+                      if (!str) return "";
+                      return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+                    };
+
+                    const matchedCategory = CATEGORIES.find((c: any) => {
+                      const changedCategory = toCapitalize(c._id);
+                      const isMatch =
+                        changedCategory === toCapitalize(item.category) ||
+                        changedCategory === toCapitalize(item.category_name);
+                      return isMatch;
+                    });
+
+                    const displayCategory = toCapitalize(
+                      item.category || item.category_name || "Unknown"
+                    );
+
+                    return (
+                      <>
+                        {matchedCategory?.icon && <span className="mr-1">{matchedCategory.icon}</span>}
+                        {displayCategory}
+                      </>
+                    );
+                  })()}
                 </Badge>
                 
                 <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 ml-auto">
                   <span className="font-medium hidden sm:inline">{item.user}</span>
                   <span className="hidden sm:inline">•</span>
-                  <span className="hidden sm:inline">{timeAgo(item.created_at)} ago</span>
+                  <span className="hidden sm:inline">{timeAgo(item.created_at || item.createdAt)}</span>
                 </div>
               </div>
 
-              {/* Mobile user info */}
               <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 sm:hidden">
                 <span className="font-medium">{item.user}</span>
                 <span>•</span>
-                <span>{timeAgo(item.created_at)} ago</span>
+                <span>{timeAgo(item.created_at || item.createdAt)}</span>
               </div>
 
-              {/* Title */}
               <div className="space-y-1">
                 {item.type === "article" || item.type === "video" ? (
                   <a
@@ -1007,7 +968,7 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
                     className="block group/link"
                   >
                     <h2 className="text-base sm:text-lg font-semibold leading-tight text-slate-900 dark:text-slate-100 group-hover/link:text-slate-700 dark:group-hover/link:text-slate-300 transition-colors duration-200">
-                      {item.title}
+                      {item.title || item.content}
                     </h2>
                     {domain && (
                       <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
@@ -1017,30 +978,19 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
                   </a>
                 ) : (
                   <h2 className="text-base sm:text-lg font-semibold leading-tight text-slate-900 dark:text-slate-100">
-                    {item.title}
+                    {item.title || item.content}
                   </h2>
                 )}
               </div>
 
-              {/* Content */}
-              {item.content && (
-                <div className="prose prose-sm max-w-none">
-                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm">
-                    {item.content}
-                  </p>
-                </div>
-              )}
-
-              {/* Author for books and quotes */}
               {item.author && (item.type === "book" || item.type === "quote") && (
                 <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
                   — {item.author}
                 </p>
               )}
 
-              {/* AI Prompt Buttons */}
               {item.type === "aiprompt" && (
-                <div className="flex gap-2 pt-2">
+                <div className="flex flex-col sm:flex-row md:flex-row gap-2 pt-2">
                   <Button
                     size="sm"
                     variant="outline"
@@ -1050,6 +1000,7 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
                     <Bot className="w-3 h-3" />
                     <span>Try in ChatGPT</span>
                   </Button>
+
                   <Button
                     size="sm"
                     variant="outline"
@@ -1062,23 +1013,20 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
                 </div>
               )}
 
-              {/* Tags */}
               {Array.isArray(item.tags) && item.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-             {item.tags.map((tag, index) => (
-  <Badge
-    key={`${tag}-${index}`}
-    variant="secondary"
-    className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors cursor-pointer text-xs text-slate-600 dark:text-slate-300"
-  >
-    #{tag}
-  </Badge>
-))}
-
+                  {item.tags.map((tag, index) => (
+                    <Badge
+                      key={`${tag}-${index}`}
+                      variant="secondary"
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors cursor-pointer text-xs text-slate-600 dark:text-slate-300"
+                    >
+                      #{tag}
+                    </Badge>
+                  ))}
                 </div>
               )}
 
-              {/* Actions */}
               <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
                 <div className="flex items-center gap-4">
                   <motion.button
@@ -1092,7 +1040,6 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
                     {commentsOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                   </motion.button>
                   
-                  {/* Copy URL for Video and Article */}
                   {(item.type === "video" || item.type === "article") && item.url && (
                     <motion.button
                       whileHover={{ scale: 1.02 }}
@@ -1106,8 +1053,7 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
                     </motion.button>
                   )}
 
-                  {/* Copy Text for Books, AI Prompts, and Quotes */}
-                  {(item.type === "book" || item.type === "prompt" || item.type === "quote") && (
+                  {(item.type === "book" || item.type === "aiprompt" || item.type === "quote") && (
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -1124,7 +1070,6 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
             </div>
           </div>
 
-          {/* Comments Section */}
           <AnimatePresence>
             {commentsOpen && (
               <motion.div
@@ -1138,68 +1083,67 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
                   <h4 className="text-sm font-medium text-slate-800 dark:text-slate-200">
                     Comments ({Array.isArray(item.comments) ? item.comments.length : 0})
                   </h4>
-{commentsArray.length === 0 ? (
-  <p className="text-slate-500 dark:text-slate-400 text-center py-4 text-sm">
-    No comments yet. Start the conversation!
-  </p>
-) : (
-  <div className="space-y-3">
-    <div className="space-y-3">
-    {(showAllComments ? commentsArray : commentsArray.slice(0, 3)).map((comment, index) => (
-      console.log(comment),
-      <div
-        key={`${comment?.id}-${index}`}
-        className="flex gap-3 p-3 bg-slate-50 dark:bg-slate-700 rounded-lg"
-      >
-    <div className="w-7 h-7 rounded-full bg-slate-400 dark:bg-slate-600 flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
-      {comment?.username ? comment.username.replace("@", "").slice(0, 2).toUpperCase() : "NA"}
-    </div>
-    <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-2 mb-1">
-        <span className="font-medium text-slate-800 dark:text-slate-200 text-sm">{comment?.username || "Unknown"}</span>
-        <span className="text-slate-400">•</span>
-        <span className="text-xs text-slate-500 dark:text-slate-400">{timeAgo(comment?.created_at)} ago</span>
-        {currentUser && comment?.createdBy === `@${currentUser.username}` && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => handleDeleteComment(comment.id)}
-            className="ml-auto p-1 h-auto text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900"
-          >
-            <Trash2 className="w-3 h-3" />
-          </Button>
-        )}
-      </div>
-      <p className="text-slate-700 dark:text-slate-300 text-sm break-words">{comment?.comment || ""}</p>
-    </div>
-  </div>
-))}
+                  
+                  {commentsArray.length === 0 ? (
+                    <p className="text-slate-500 dark:text-slate-400 text-center py-4 text-sm">
+                      No comments yet. Start the conversation!
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      <ScrollArea className="h-[250px] pr-4">
+                        <div className="space-y-3">
+                          {(showAllComments ? commentsArray : commentsArray.slice(0, 3)).map((comment, index) => (
+                            <div
+                              key={`${comment?.id}-${index}`}
+                              className="flex gap-3 p-3 bg-slate-50 dark:bg-slate-700 rounded-lg"
+                            >
+                              <div className="w-7 h-7 rounded-full bg-slate-400 dark:bg-slate-600 flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+                                {comment?.username ? comment.username.replace("@", "").slice(0, 2).toUpperCase() : comment?.user ? comment.user.replace("@", "").slice(0, 2).toUpperCase() : "NA"}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-medium text-slate-800 dark:text-slate-200 text-sm">{comment?.username || comment?.user || "Unknown"}</span>
+                                  <span className="text-slate-400">•</span>
+                                  <span className="text-xs text-slate-500 dark:text-slate-400">{timeAgo(comment?.created_at || comment?.createdAt)} ago</span>
+                                  {currentUser && comment?.username === currentUser.username && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleDeleteComment(comment.id)}
+                                      className="ml-auto p-1 h-auto text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                                <p className="text-slate-700 dark:text-slate-300 text-sm break-words">{comment?.comment || comment?.text || ""}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                      
+                      {commentsArray.length > 3 && (
+                        <div className="flex justify-center pt-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowAllComments(!showAllComments)}
+                            className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                            <span className="text-xs">
+                              {showAllComments 
+                                ? "Show Less" 
+                                : `Show ${commentsArray.length - 3} more comments`
+                              }
+                            </span>
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-    </div>
-    
-    {/* Show More/Less Button */}
-    {commentsArray.length > 3 && (
-      <div className="flex justify-center pt-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowAllComments(!showAllComments)}
-          className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1"
-        >
-          <MoreHorizontal className="w-4 h-4" />
-          <span className="text-xs">
-            {showAllComments 
-              ? "Show Less" 
-              : `Show ${commentsArray.length - 3} more comments`
-            }
-          </span>
-        </Button>
-      </div>
-    )}
-  </div>
-)}
-
-                  {/* Add Comment */}
                   <div className="flex gap-3 pt-2">
                     <div className="w-7 h-7 rounded-full bg-slate-500 dark:bg-slate-400 flex items-center justify-center text-white dark:text-slate-900 font-medium text-xs flex-shrink-0">
                       {currentUser?.username
@@ -1240,16 +1184,29 @@ function ItemCard({ item, onVote, onAddComment, onDeleteComment, onRequireAuth, 
       </Card>
     </motion.div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison - only re-render if these specific props change
+  return (
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.item.points_count === nextProps.item.points_count &&
+    prevProps.item.comments?.length === nextProps.item.comments?.length &&
+    prevProps.currentUser?.id === nextProps.currentUser?.id &&
+    JSON.stringify(prevProps.item.points) === JSON.stringify(nextProps.item.points)
+  );
+});
 
 function ContentTypeFilter({ activeType, onTypeChange }: { activeType: string; onTypeChange: (type: string) => void }) {
+  const handleTypeChange = (type: string) => {
+    onTypeChange(type);
+  };
+
   return (
     <div className="mb-4">
       <div className="flex flex-wrap gap-2">
         <Button
           variant={activeType === "all" ? "default" : "outline"}
           size="sm"
-          onClick={() => onTypeChange("all")}
+          onClick={() => handleTypeChange("all")}
           className={`transition-all duration-200 ${
             activeType === "all" 
               ? "bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200" 
@@ -1258,22 +1215,30 @@ function ContentTypeFilter({ activeType, onTypeChange }: { activeType: string; o
         >
           All Types
         </Button>
-        {Object.entries(TYPE_META).map(([key, meta], index) => (
-          <Button
-             key={`${key}-${index}`}
-            variant={activeType === key ? "default" : "outline"}
-            size="sm"
-            onClick={() => onTypeChange(key)}
-            className={`flex items-center gap-1 transition-all duration-200 ${
-              activeType === key 
-                ? "bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200" 
-                : "hover:bg-slate-100 border-slate-300 dark:hover:bg-slate-700 dark:border-slate-600"
-            }`}
-          >
-            {meta.icon}
-            <span className="text-xs">{meta.label}</span>
-          </Button>
-        ))}
+
+        {Object.entries(TYPE_META).map(([key, meta], index) => {
+          if(key === "prompt"){
+            key = "aiprompt"
+          }
+          const isActive = activeType === key;
+
+          return (
+            <Button
+              key={`${key}-${index}`}
+              variant={isActive ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTypeChange(key)}
+              className={`flex items-center gap-1 transition-all duration-200 ${
+                isActive
+                  ? "bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200"
+                  : "hover:bg-slate-100 border-slate-300 dark:hover:bg-slate-700 dark:border-slate-600"
+              }`}
+            >
+              {meta.icon}
+              <span className="text-xs">{meta.label}</span>
+            </Button>
+          );
+        })}
       </div>
     </div>
   );
@@ -1286,21 +1251,39 @@ interface SidebarProps {
   isLoading?: boolean;
 }
 
-function Sidebar({ activeCategory, setActiveCategory, onCategoryChange, isLoading }: SidebarProps) {
+function Sidebar({
+  activeCategory,
+  onCategoryChange,
+  isLoading = false,
+}: SidebarProps) {
+  const normalizedCategory =
+    activeCategory === "all"
+      ? 1
+      : typeof activeCategory === "string"
+      ? parseInt(activeCategory)
+      : activeCategory;
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
           Categories
         </h3>
+
         <div className="space-y-1">
-          {CATEGORIES.map((category, index) => (
-            <motion.div key={`${category._id}-${index}`} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+          {CATEGORIES.map((category: any, index: number) => (
+            <motion.div
+              key={`${category.id}-${index}`}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+            >
               <Button
-                variant={activeCategory === category.id ? "default" : "ghost"}
+                variant={
+                  normalizedCategory === category.id ? "default" : "ghost"
+                }
                 className={`w-full justify-start text-left h-auto p-3 rounded transition-all duration-200 ${
-                  activeCategory === category.id 
-                    ? "bg-slate-800 text-white shadow-sm dark:bg-slate-200 dark:text-slate-900" 
+                  normalizedCategory === category.id
+                    ? "bg-slate-800 text-white shadow-sm dark:bg-slate-200 dark:text-slate-900"
                     : "hover:bg-slate-100 text-slate-700 dark:hover:bg-slate-700 dark:text-slate-300"
                 }`}
                 onClick={() => onCategoryChange(category.id)}
@@ -1309,7 +1292,7 @@ function Sidebar({ activeCategory, setActiveCategory, onCategoryChange, isLoadin
                 <div className="flex items-center gap-2">
                   <span className="text-base">{category.icon}</span>
                   <span className="font-medium text-sm">{category.name}</span>
-                  {isLoading && activeCategory === category.id && (
+                  {isLoading && normalizedCategory === category.id && (
                     <Loader2 className="w-3 h-3 animate-spin ml-auto" />
                   )}
                 </div>
@@ -1321,7 +1304,9 @@ function Sidebar({ activeCategory, setActiveCategory, onCategoryChange, isLoadin
 
       <Card className="bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700">
         <CardContent className="p-4">
-          <h4 className="font-semibold text-slate-800 dark:text-slate-200 mb-2 text-sm">💡 Community Tips</h4>
+          <h4 className="font-semibold text-slate-800 dark:text-slate-200 mb-2 text-sm">
+            💡 Community Tips
+          </h4>
           <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
             <div className="flex gap-2">
               <span className="text-slate-500">•</span>
@@ -1329,7 +1314,9 @@ function Sidebar({ activeCategory, setActiveCategory, onCategoryChange, isLoadin
             </div>
             <div className="flex gap-2">
               <span className="text-slate-500">•</span>
-              <span>For prompts: include role, constraints, and expected output</span>
+              <span>
+                For prompts: include role, constraints, and expected output
+              </span>
             </div>
             <div className="flex gap-2">
               <span className="text-slate-500">•</span>
@@ -1342,14 +1329,13 @@ function Sidebar({ activeCategory, setActiveCategory, onCategoryChange, isLoadin
   );
 }
 
-// Mobile Category Sidebar
 function MobileCategorySidebar(props: SidebarProps) {
   const { activeCategory, onCategoryChange, isLoading } = props;
   const [open, setOpen] = useState(false);
 
   const handleCategoryChange = (categoryId: string | number) => {
     onCategoryChange?.(categoryId);
-    setOpen(false); // Close the sheet after selection
+    setOpen(false);
   };
 
   return (
@@ -1369,7 +1355,7 @@ function MobileCategorySidebar(props: SidebarProps) {
         </SheetHeader>
         <div className="mt-6">
           <div className="space-y-2">
-            {CATEGORIES.map((category, index) => (
+            {CATEGORIES.map((category: any, index: number) => (
               <motion.div key={`${category._id}-${index}`} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
                 <Button
                   variant={activeCategory === category.id ? "default" : "ghost"}
@@ -1398,39 +1384,41 @@ function MobileCategorySidebar(props: SidebarProps) {
   );
 }
 
-function Pagination({
-  currentPage,
-  totalPages,
-  onPageChange,
-  isLoading,
-}: {
+interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   isLoading?: boolean;
-}): React.ReactElement | null {
+}
+
+function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+  isLoading = false,
+}: PaginationProps): React.ReactElement | null {
   const getPageNumbers = () => {
     const pages: number[] = [];
-    const showPages = 5;
-    
-    let start = Math.max(1, currentPage - Math.floor(showPages / 2));
-    let end = Math.min(totalPages, start + showPages - 1);
-    
-    if (end - start < showPages - 1) {
-      start = Math.max(1, end - showPages + 1);
+    const visiblePages = 5;
+
+    let start = Math.max(1, currentPage - Math.floor(visiblePages / 2));
+    let end = Math.min(totalPages, start + visiblePages - 1);
+
+    if (end - start < visiblePages - 1) {
+      start = Math.max(1, end - visiblePages + 1);
     }
-    
+
     for (let i = start; i <= end; i++) {
       pages.push(i);
     }
-    
+
     return pages;
   };
 
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-center gap-1 mt-8">
+    <div className="flex items-center justify-center gap-1 mt-8 select-none">
       <Button
         variant="outline"
         size="sm"
@@ -1441,23 +1429,23 @@ function Pagination({
         <ChevronLeft className="w-3 h-3" />
       </Button>
 
-      {getPageNumbers().map((page, index) => (
+      {getPageNumbers().map((page) => (
         <Button
-          key={`${page}-${index}`}
+          key={page}
           variant={page === currentPage ? "default" : "outline"}
           size="sm"
           onClick={() => onPageChange(page)}
           disabled={isLoading}
-          className={`w-8 h-8 rounded ${
-            page === currentPage 
-              ? "bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200" 
+          className={`w-8 h-8 rounded transition-all duration-150 ${
+            page === currentPage
+              ? "bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200"
               : "border-slate-300 hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-700"
           }`}
         >
           {page}
         </Button>
       ))}
-      
+
       <Button
         variant="outline"
         size="sm"
@@ -1480,7 +1468,6 @@ function Header({
   onOpenAuth: (mode?: string) => void;
   onOpenCreateModal?: () => void;
 }) {
-  // console.log('Rendering Header with currentUser:', currentUser);
   if (currentUser) {
     localStorage.setItem('inspirelens-theme', currentUser.mode || 'system');
   }
@@ -1708,6 +1695,7 @@ function CreateContentModal({
       content = summary;
       finalAuthor = author;
     }
+    console.log(title);
     
     const payload = {
       userId: currentUser.id,
@@ -1722,12 +1710,12 @@ function CreateContentModal({
     
     console.log("Submitted payload:", payload);
           const response = await ApiService.createContent(payload);
-          console.log("Created content:", response.id);
-    if (response.id === undefined || response.id === null) {
-      showErrorToast(response.message || "Failed to create content. Please try again.");
-      setIsLoading(false);
-      return;
-    }
+    //       console.log("Created content:", response.id);
+    // if (response.id === undefined || response.id === null) {
+    //   showErrorToast(response.message || "Failed to create content. Please try again.");
+    //   setIsLoading(false);
+    //   return;
+    // }
     
     
     
@@ -1826,6 +1814,7 @@ function CreateContentModal({
                 value={quote}
                 onChange={(e) => {
                   setQuote(e.target.value);
+                  setTitle(e.target.value.slice(0, 100)); // Sync title with quote
                   if (errors.quote) setErrors(prev => ({ ...prev, quote: null }));
                 }}
                 placeholder="Enter the inspiring quote..."
@@ -1889,6 +1878,7 @@ function CreateContentModal({
               value={promptDetails}
               onChange={(e) => {
                 setPromptDetails(e.target.value);
+                setTitle(e.target.value.slice(0, 100)); // Sync title with prompt (first 60 chars)
                 if (errors.promptDetails) setErrors(prev => ({ ...prev, promptDetails: null }));
               }}
               placeholder="Write your AI prompt here. Be specific about the role, context, instructions, and expected output format..."
@@ -1927,7 +1917,7 @@ function CreateContentModal({
           id="title"
           value={title}
           onChange={(e) => {
-            setTitle(e.target.value);
+            setTitle(e.target.value.slice(0, 100));
             if (errors.title) setErrors(prev => ({ ...prev, title: null }));
           }}
           placeholder="Enter a compelling title that captures attention..."
@@ -1960,6 +1950,7 @@ function CreateContentModal({
           value={url}
           onChange={(e) => {
             setUrl(e.target.value);
+            setTitle(e.target.value.slice(0, 100)); // Sync title with URL (first 60 chars)
             if (errors.url) setErrors(prev => ({ ...prev, url: null }));
           }}
           placeholder={`https://example.com/${type === "article" ? "article" : "watch"}`}
@@ -2001,7 +1992,7 @@ function CreateContentModal({
                       id="title"
                       value={title}
                       onChange={(e) => {
-                        setTitle(e.target.value);
+                        setTitle(e.target.value.slice(0, 100));
                         if (errors.title) setErrors(prev => ({ ...prev, title: null }));
                       }}
                       placeholder="Enter a compelling title that captures attention..."
@@ -2243,7 +2234,7 @@ function CreateContentModal({
                       Choose a Category
                     </Label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {CATEGORIES.filter(c => c._id !== "all").map((cat, index) => (
+                      {CATEGORIES.filter((c: any) => c._id !== "all").map((cat: any, index: number) => (
                         <motion.div
                           key={`${cat._id}-${index}`}
                           whileHover={{ scale: 1.02 }}
@@ -2295,7 +2286,7 @@ function CreateContentModal({
                           <span className="ml-1">{TYPE_META[type]?.label}</span>
                         </Badge>
                         <Badge variant="outline" className="capitalize">
-                          {CATEGORIES.find(c => c._id === category)?.icon} {category}
+                          {CATEGORIES.find((c: any) => c._id === category)?.icon} {category}
                         </Badge>
                       </div>
                       <h5 className="font-medium text-slate-900 dark:text-slate-100">
@@ -2425,6 +2416,7 @@ function AuthModal({
         }
       
       }
+      console.log("Authentication response:", response);
         if(response && response.token){
             if (onSuccess) onSuccess(response);
             showSuccessToast(`Welcome ${active === "login" ? "back" : "to InspireLens"}, ${response.username}!`);
@@ -3029,31 +3021,44 @@ const handleGoogleSignup = async (credentialResponse: any) => {
         </div>
 
         {/* Password */}
-        <div className="space-y-1 relative">
-          <Label htmlFor="password">Password</Label>
+          <div className="space-y-1">
+        <Label htmlFor="password" className="text-slate-700 dark:text-slate-300 text-sm">
+          Password
+        </Label>
+        <div className="relative">
           <Input
             id="password"
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => {
               setPassword(e.target.value);
-              if (errors?.password) setErrors((prev) => ({ ...prev, password: null }));
+              if (errors.password) setErrors(prev => ({ ...prev, password: null }));
             }}
-            placeholder="Create a strong password"
+            placeholder="Enter your password"
+            className={`h-10 border rounded pr-10 transition-colors ${
+              errors.password
+                ? "border-red-300 focus:border-red-500"
+                : "border-slate-300 focus:border-slate-500 dark:border-slate-600 dark:focus:border-slate-400"
+            }`}
             disabled={isLoading}
           />
           <Button
             type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
+            disabled={isLoading}
           >
-            {showPassword ? <EyeOff /> : <Eye />}
+            {showPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
           </Button>
         </div>
+      </div>
 
         {/* Confirm Password */}
         <div className="space-y-1">
-          <Label htmlFor="confirmPassword">Confirm Password</Label>
+          <Label htmlFor="confirmPassword" className="text-slate-700 dark:text-slate-300 text-sm">Confirm Password</Label>
+          <div className="relative">
           <Input
             id="confirmPassword"
             type="password"
@@ -3065,6 +3070,7 @@ const handleGoogleSignup = async (credentialResponse: any) => {
             placeholder="Confirm your password"
             disabled={isLoading}
           />
+          </div>
         </div>
 
         {/* Submit */}
@@ -3220,33 +3226,34 @@ function FloatingActionButton({
   );
 }
 
-// ---- Main App ----
+// Main App
 function AppContent() {
-interface Comment {
-  id: number;
-  text: string;
-  user: string;
-  created_at: number;
-  createdBy: string;
-}
+  interface Comment {
+    id: number;
+    text: string;
+    user: string;
+    created_at: number;
+    createdBy: string;
+  }
 
-interface Item {
-  id: number;
-  url: string;
-  tags: string[];
-  type: string;        // e.g. "video", "article", etc.
-  user: string;        // username like "@benjamin_hall"
-  title: string;
-  author: string;
-  points: number;
-  content: string;
-  category: string;     // e.g. "Career"
-  category_name: string;  // e.g. "Career"
-  category_id: string;    // e.g. "Career"
-  comments: Comment[] | null;
-  created_at: number;   // timestamp (ms since epoch)
-  userId: number;
-}
+  interface Item {
+    id: number;
+    url: string;
+    tags: string[];
+    type: string;
+    user: string;
+    title: string;
+    author: string;
+    points: Vote[] | null;
+    points_count: number;
+    content: string;
+    category: string;
+    category_name: string;
+    category_id: string;
+    comments: Comment[] | null;
+    created_at: number;
+    userId: number;
+  }
 
   const [items, setItems] = useState<Item[]>(initialItems || []);
   const [activeCategory, setActiveCategory] = useState("all");
@@ -3264,111 +3271,66 @@ interface Item {
     }
   });
 
-  // Load initial content on app start
   useEffect(() => {
-    console.log("Items updated:", items);
-
+    setItems(items);
     const loadInitialContent = async () => {
       setIsLoading(true);
-      
-      // Simulate loading delay for better UX
-      await simulateDelay(800);
-      
-      // Use initial sample data
+      await simulateDelay(500);
       setIsLoading(false);
     };
-// fetchPosts();
     loadInitialContent();
-  }, [items]);
+  }, []);
 
-  // Filter and paginate items
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      const categoryMatch = activeCategory === "all" ? true : item.category === activeCategory;
-      const typeMatch = activeType === "all" ? true : item.type === activeType;
-      return categoryMatch && typeMatch;
-    });
-  }, [items, activeCategory, activeType]);
+  const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
 
-  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
   const paginatedItems = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredItems, currentPage]);
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return items.slice(startIndex, endIndex);
+  }, [items, currentPage]);
 
-const handleCategoryChange = async (categoryId: number | string) => {
-  const newCategory = String(categoryId) === "1" ? "all" : String(categoryId);
+  const handleCategoryChange = async (categoryId: number | string) => {
+    const newCategory = String(categoryId) === "1" ? "all" : String(categoryId);
+    if (newCategory === activeCategory) return;
 
-  if (newCategory === activeCategory) return;
+    setIsLoading(true);
+    setActiveCategory(newCategory);
+    setCurrentPage(1);
 
-  setIsLoading(true);
-  setActiveCategory(newCategory);
-  setCurrentPage(1);
+    await simulateDelay(300);
 
-  console.log("Changing category to:", newCategory);
-  console.log("Current active type:", activeType);
+    try {
+      const response = await ApiService.getContentByCategory(newCategory, 1, activeType);
 
-  await simulateDelay(300);
+      if (response.posts && response.posts.length > 0) {
+        setItems(response.posts);
+      }
 
-  try {
-    const response = await ApiService.getContentByCategory(
-      newCategory,
-      1,
-      activeType
-    );
-
-    console.log("API response:", response.posts);
-    console.log("Current before api:", items);
-
-    if (response.posts && response.posts.length > 0) {
-      setItems(response.posts);
-      console.log("Setting items from API response:", response.posts);
-      setItems(response.posts);
-
-      // ✅ log updated items via useEffect
-      console.log("New items set:", items);
-    } else {
-      console.log("No items in API response, using local filtering");
+      const matchedCategory = CATEGORIES.filter((c: any) => String(c.id) === newCategory)[0];
+      showInfoToast(`Loaded ${matchedCategory?.name || "content"}`);
+    } catch (error) {
+      console.error("Failed to load category content:", error);
+      showErrorToast("Failed to load content. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-console.log(CATEGORIES.filter(c => c));
-console.log(newCategory);
-
-
-    const matchedCategory = CATEGORIES.filter(c => String(c.id) === newCategory)[0];
-    showInfoToast(`Loaded ${matchedCategory?.name || "content"}`);
-  } catch (error) {
-    console.error("Failed to load category content:", error);
-    showErrorToast("Failed to load content. Please try again.");
-  } finally {
-    setIsLoading(false);
-  }
-};
-
+  };
 
   const handleTypeChange = async (typeId: React.SetStateAction<string>) => {
     if (typeId === activeType) return;
     
     setIsLoading(true);
-    if(typeId === "prompt"){
+    if(typeId === "prompt") {
       typeId = "aiprompt"
     }
     setActiveType(typeId);
     setCurrentPage(1);
     
-    // Simulate loading delay
-      try {
-      // Make API call to get content by type
+    try {
       const response = await ApiService.getContentByType(typeId, 1, activeCategory);
-      console.log("API response for type change:", response);
       
-      
-      if (response.items) {
-        console.log("Setting items from API response:", response.items);
-        
+      if (response.items || response.posts) {
         setItems(response.items || response.posts);
-      } else {
-        // Fallback: use existing items filtered by type
-        console.log("No items in API response, using local filtering");
       }
       
       const typeName = typeId === 'all' ? 'All Types' : TYPE_META[String(typeId) as keyof typeof TYPE_META]?.label || String(typeId);
@@ -3376,16 +3338,9 @@ console.log(newCategory);
     } catch (error) {
       console.error("Failed to load type content:", error);
       showErrorToast("Failed to filter content. Please try again.");
-      
-      // Fallback: use local filtering on existing data
     } finally {
       setIsLoading(false);
     }
-    // await simulateDelay(300);
-    
-    // const typeName = typeId === 'all' ? 'All Types' : TYPE_META[String(typeId) as keyof typeof TYPE_META]?.label || String(typeId);
-    // showInfoToast(`Filtered by ${typeName}`);
-    // setIsLoading(false);
   };
 
   const handlePageChange = async (page: React.SetStateAction<number>) => {
@@ -3393,8 +3348,8 @@ console.log(newCategory);
     
     setIsLoading(true);
     setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
     
-    // Simulate loading delay
     await simulateDelay(400);
     
     showInfoToast(`Page ${page}`);
@@ -3412,94 +3367,139 @@ console.log(newCategory);
     setAuthOpen(true);
   }
 
+  const isAuthHandledRef = useRef(false);
+
   function handleAuthSuccess(user: any) {
+    if (isAuthHandledRef.current) return;
+    isAuthHandledRef.current = true;
+
     setCurrentUser(user);
-    localStorage.setItem("inspirelens_user", JSON.stringify(user));
+    if (user.token) {
+      localStorage.setItem("inspirelens_user", JSON.stringify(user));
+    }
     setAuthOpen(false);
   }
 
   function handleCreateContent(newItem: Item) {
     setItems((prev) => [newItem, ...prev]);
-    
-    // Reset to first page to show the new item
     setCurrentPage(1);
     
-    // If not on "all" category, switch to the item's category
     if (activeCategory !== "all" && activeCategory !== newItem.category_id) {
       setActiveCategory(newItem.category_id || newItem.category);
     }
   }
 
-  function handleVote(id: number, delta: number) {
-    // Update UI immediately
-    setItems((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, points: Math.max(0, it.points + delta) } : it))
-    );
-  }
-
-  async function handleAddComment(itemId: number, comment: { text: any; userId: any; user: string; createdBy: string; }) {
-       const optimisticComment = {
-        ...comment,
-        id: Date.now(), // temporary ID
-      };
-     
-    // Add comment to UI immediately
-   setItems((prev) =>
-        prev.map((it) =>
-          it.id === itemId
-            ? {
-                ...it,
-                comments: [
-                  ...(it.comments ?? []),
-                  {
-                    id: optimisticComment.id,
-                    text: optimisticComment.text,
-                    user: optimisticComment.user,
-                    created_at: Date.now(),
-                    createdBy: optimisticComment.createdBy,
-                  } as Comment,
-                ],
-              }
-            : it
-        )
-      );
-console.log("comment-->", comment);
-console.log("Adding comment:", comment.text);
-console.log("To item ID:", itemId);
-console.log("Optimistic comment:", optimisticComment);
-
-
-    // const response = await ApiService.addComment(itemId, comment.text, comment.userId);
-    // console.log("Add comment response:", response);
-    //     setItems((prev) =>
-    //     prev.map((it) => {
-    //       if (it.id === itemId) {
-    //         const updatedComments = Array.isArray(it.comments)
-    //           ? it.comments.map(c => 
-    //               c.id === optimisticComment.id ? response.comment : c
-    //             )
-    //           : [];
-    //         return { ...it, comments: updatedComments };
-    //       }
-    //       return it;
-    //     })
-    //   );
-  }
-
-  function handleDeleteComment(itemId: number, commentId: number) {
-    // Remove comment from UI immediately
-    setItems((prev) =>
-      prev.map((it) => {
-        if (it.id === itemId) {
-          return {
-            ...it,
-            comments: Array.isArray(it.comments) ? it.comments.filter(c => c.id !== commentId) : [],
-          };
+  // ✅ OPTIMIZED handleVote - only updates the specific voted item
+  const handleVote = useCallback((id: number, delta: number, updatedVotes?: Vote[], postType?: string) => {
+    setItems((prev: Item[]) => {
+      return prev.map((item) => {
+        // Skip items that don't match
+        if (item.id !== id || item.type !== postType) {
+          return item;
         }
-        return it;
+
+        // Update only the matching item
+        const oldPoints = item.points_count;
+        const newPoints = Math.max(0, oldPoints + delta);
+        const updatedVotesArray = updatedVotes || item.points;
+
+        // Return updated item with immutable update
+        return {
+          ...item,
+          points_count: newPoints,
+          points: updatedVotesArray,
+        };
+      });
+    });
+  }, []);
+
+  // ✅ OPTIMIZED handleAddComment - only updates the specific commented item
+  const handleAddComment = useCallback(async (itemId: number, postType: string, comment: { text: any; userId: any; user: string; createdBy: string; }) => {
+    const optimisticComment = {
+      ...comment,
+      id: Date.now(),
+    };
+     
+    // Add comment to UI immediately (optimistic update)
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId) {
+          return item;
+        }
+        
+        return {
+          ...item,
+          comments: [
+            ...(item.comments ?? []),
+            {
+              id: optimisticComment.id,
+              text: optimisticComment.text,
+              user: optimisticComment.user,
+              created_at: Date.now(),
+              createdBy: optimisticComment.createdBy,
+            } as Comment,
+          ],
+        };
       })
     );
-  }
+
+    try {
+      const response = await ApiService.addComment(itemId, postType, comment.text, comment.userId);
+      
+      // Replace optimistic comment with real one from server
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== itemId) {
+            return item;
+          }
+          
+          const updatedComments = Array.isArray(item.comments)
+            ? item.comments.map(c => 
+                c.id === optimisticComment.id ? response.comment : c
+              )
+            : [];
+          
+          return { ...item, comments: updatedComments };
+        })
+      );
+    } catch (error) {
+      console.error("Failed to add comment:", error);
+      // Revert optimistic update on error
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== itemId) {
+            return item;
+          }
+          
+          return {
+            ...item,
+            comments: Array.isArray(item.comments)
+              ? item.comments.filter(c => c.id !== optimisticComment.id)
+              : [],
+          };
+        })
+      );
+      showErrorToast("Failed to add comment. Please try again.");
+    }
+  }, []);
+
+  // ✅ OPTIMIZED handleDeleteComment - only updates the specific item
+  const handleDeleteComment = useCallback((itemId: number, commentId: number) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId) {
+          return item;
+        }
+        
+        return {
+          ...item,
+          comments: Array.isArray(item.comments) 
+            ? item.comments.filter(c => c.id !== commentId) 
+            : [],
+        };
+      })
+    );
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
@@ -3528,31 +3528,23 @@ console.log("Optimistic comment:", optimisticComment);
         />
 
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar - Hidden on mobile/tablet, shown on desktop */}
           <aside className="hidden lg:block lg:col-span-1">
             <div className="sticky top-6">
               <Sidebar
                 activeCategory={activeCategory}
-                // setActiveCategory={setActiveCategory}
                 onCategoryChange={handleCategoryChange}
                 isLoading={isLoading}
               />
             </div>
           </aside>
 
-          {/* Main Content */}
           <main className="lg:col-span-3">
             <div className="space-y-4">
-              {/* Header Stats with Mobile Category Toggle */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
-                      {CATEGORIES.find(c => c._id === activeCategory)?.icon} {" "}
-                      {CATEGORIES.find(c => c._id === activeCategory)?.name || "All"}
-                    </h2>
                     <p className="text-slate-600 dark:text-slate-400 mt-0.5 text-sm">
-                      {filteredItems.length} inspirational {filteredItems.length === 1 ? "item" : "items"}
+                      {items.length} inspirational {items.length === 1 ? "item" : "items"}
                     </p>
                   </div>
                   <MobileCategorySidebar 
@@ -3567,13 +3559,11 @@ console.log("Optimistic comment:", optimisticComment);
                 </div>
               </div>
 
-              {/* Content Type Filter */}
               <ContentTypeFilter 
                 activeType={activeType}
                 onTypeChange={handleTypeChange}
               />
 
-              {/* Content */}
               <AnimatePresence mode="wait">
                 {isLoading ? (
                   <motion.div
@@ -3623,8 +3613,7 @@ console.log("Optimistic comment:", optimisticComment);
                 )}
               </AnimatePresence>
 
-              {/* Pagination */}
-              {!isLoading && paginatedItems.length > 0 && (
+              {!isLoading && items.length > 0 && (
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
@@ -3636,13 +3625,11 @@ console.log("Optimistic comment:", optimisticComment);
           </main>
         </div>
 
-        {/* Floating Action Button */}
         <FloatingActionButton 
           onClick={() => setCreateOpen(true)}
           currentUser={currentUser}
         />
 
-        {/* Footer */}
         <footer className="mt-16 text-center">
           <div className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs bg-white dark:bg-slate-800 px-4 py-2 rounded-full shadow-sm border border-slate-200 dark:border-slate-700">
             <span>© {new Date().getFullYear()} InspireLens</span>

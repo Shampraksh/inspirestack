@@ -168,7 +168,7 @@ router.post('/addContent', authenticateToken, contentValidation, async (req, res
       }
     }
 
-    logger.info(`Content created: ${dbType} by user ${userId}`);
+    // logger.info(`Content created: ${dbType} by user ${userId}`);
 
     res.status(201).json({ id: contentId, message: 'Content created successfully' });
   } catch (error) {
@@ -178,68 +178,106 @@ router.post('/addContent', authenticateToken, contentValidation, async (req, res
 });
 
 // Add comment
-router.post('/content/:contentId/comments', authenticateToken, async (req, res) => {
+
+router.post('/:contentId/comments', authenticateToken, async (req, res) => {
+  console.log("🟢 Adding comment request body:", req);
+
   try {
     const { contentId } = req.params;
-    const { text } = req.body;
+    const { comment } = req.body; // ✅ direct destructuring (not text.comment)
     const userId = req.user.id;
+    const postType = req.body.postType; // ✅ get postType from request body
+
+    console.log("🆔 Content ID:", contentId);
+    console.log("💬 Comment text:", comment);
+    console.log("👤 User ID:", userId);
+    console.log("📄 Post Type:", postType);
+
     const db = getDB();
 
-    if (!text || text.trim().length === 0) {
+    // 🧩 Validate input
+    if (!comment || comment.trim().length === 0) {
       return res.status(400).json({ message: 'Comment text is required' });
     }
 
-    // Determine post type
-    let postType = null;
-    const tables = ['quotes', 'articles', 'books', 'videos', 'aiprompts'];
-    
-    for (const table of tables) {
-      const [rows] = await db.execute(
-        `SELECT COUNT(*) as count FROM ${table} WHERE id = ? AND is_deleted = 0`,
-        [contentId]
-      );
-      if (rows[0].count > 0) {
-        postType = table === 'aiprompts' ? 'aiprompt' : table.slice(0, -1);
-        break;
-      }
-    }
+
 
     if (!postType) {
       return res.status(404).json({ message: 'Content not found' });
     }
 
-    // Check for duplicate
+    // 🚫 Check for duplicate comment
     const [existingComments] = await db.execute(
       'SELECT COUNT(*) as count FROM comments WHERE post_id = ? AND post_type = ? AND user_id = ? AND comment = ? AND is_deleted = 0',
-      [contentId, postType, userId, text.trim()]
+      [contentId, postType, userId, comment.trim()]
     );
 
     if (existingComments[0].count > 0) {
       return res.status(400).json({ message: 'Duplicate comment' });
     }
 
-    // Add comment
+    // 💾 Insert comment
     const [result] = await db.execute(
       'INSERT INTO comments (post_id, post_type, user_id, comment) VALUES (?, ?, ?, ?)',
-      [contentId, postType, userId, text.trim()]
+      [contentId, postType, userId, comment.trim()]
     );
 
-    // Get user info
+    // 👥 Fetch user info
     const [users] = await db.execute('SELECT username FROM users WHERE id = ?', [userId]);
 
-    const comment = {
+    const newComment = {
       id: result.insertId,
-      text: text.trim(),
+      text: comment.trim(),
       user: `@${users[0].username}`,
       createdAt: Date.now(),
-      createdBy: `@${users[0].username}`
+      createdBy: `@${users[0].username}`,
     };
 
-    res.status(201).json({ comment, message: 'Comment added successfully' });
+    console.log("✅ Comment added:", newComment);
+
+    res.status(201).json({ comment: newComment, message: 'Comment added successfully' });
   } catch (error) {
-    logger.error('Add comment error:', error);
+    console.error("❌ Add comment error:", error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+// Delete comment
+router.delete('/deleteComment/:contentId/comments/:commentId', authenticateToken, async (req, res) => {
+  try {
+    const { contentId, commentId } = req.params;
+    const userId = req.user.id;
+    const db = getDB();
+
+    console.log("🗑️ Deleting comment:", { contentId, commentId, userId });
+
+    // Ensure all IDs are numbers to avoid SQL injection
+    const postId = parseInt(contentId, 10);
+    const commentID = parseInt(commentId, 10);
+    const userID = parseInt(userId, 10);
+
+    if (isNaN(postId) || isNaN(commentID) || isNaN(userID)) {
+      return res.status(400).json({ message: 'Invalid ID provided' });
+    }
+
+    // Soft delete (set is_deleted = 1)
+    const [result] = await db.execute(
+      'UPDATE comments SET is_deleted = 1 WHERE post_id = ? AND id = ? AND user_id = ? AND is_deleted = 0',
+      [postId, commentID, userID]
+    );
+
+    if (result.affectedRows > 0) {
+      console.log('✅ Comment deleted successfully');
+      return res.status(200).json({ message: 'Comment deleted successfully' });
+    } else {
+      console.warn('⚠️ Comment not found or already deleted');
+      return res.status(404).json({ message: 'Comment not found or already deleted' });
+    }
+  } catch (error) {
+    console.error('❌ Delete comment error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 
 module.exports = router;

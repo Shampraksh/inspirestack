@@ -30,7 +30,7 @@ const loginValidation = [
 
 // Sign up
 router.post('/signup', signupValidation, async (req, res) => {
-  logger.info('Signup attempt:', req.body);
+  // logger.info('Signup attempt:', req.body);
   console.log(req.body);
   try {
     const errors = validationResult(req);
@@ -67,7 +67,7 @@ router.post('/signup', signupValidation, async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    logger.info(`User created: ${email}`);
+    // logger.info(`User created: ${email}`);
 
     res.status(201).json({
       token,
@@ -119,7 +119,7 @@ router.post('/login', loginValidation, async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    logger.info(`User logged in: ${email}`);
+    // logger.info(`User logged in: ${email}`);
 
     res.json({
       token,
@@ -137,7 +137,7 @@ router.post('/login', loginValidation, async (req, res) => {
 
 // Google OAuth
 router.post('/google', async (req, res) => {
-  logger.info('Google OAuth attempt:', req.body);
+  // logger.info('Google OAuth attempt:', req.body);
   try {
     const { token } = req.body;
     const db = getDB();

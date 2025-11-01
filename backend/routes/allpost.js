@@ -109,7 +109,7 @@ router.get('/', async (req, res) => {
 
 
     const [posts] = await db.execute(`
-      WITH unified_content AS (
+     WITH unified_content AS (
     SELECT 'quote' AS type, id, quote AS content, author, created_at, NULL AS summary, category_id, user_id, NULL AS url 
     FROM quotes WHERE is_deleted = 0
     UNION ALL
@@ -143,6 +143,7 @@ SELECT
     c.author,
     c.created_at,
     c.summary,
+    cat.id AS category_id,
     cat.name AS category_name,
     u.username,
     c.url,
@@ -190,7 +191,17 @@ SELECT
           AND v.is_deleted = 0
     ) AS points,
 
-    -- Total counts for each type (scalar subqueries)
+    -- ✅ Total count of votes (new column)
+    (
+        SELECT COUNT(*)
+        FROM votes v
+        WHERE v.post_type = c.type
+          AND v.post_id = c.id
+          AND v.vote_type = 'up'
+          AND v.is_deleted = 0
+    ) AS points_count,
+
+    -- Total counts for each type
     (SELECT COUNT(*) FROM quotes WHERE is_deleted = 0) AS quote_count,
     (SELECT COUNT(*) FROM books WHERE is_deleted = 0) AS book_count,
     (SELECT COUNT(*) FROM articles WHERE is_deleted = 0) AS article_count,
@@ -204,6 +215,9 @@ ORDER BY c.created_at DESC;
 
 
     `);
+
+    // console.log("posts:", posts);
+    // logger.info('Fetched all posts:', posts);
 
     res.json({ posts });
   } catch (error) {
